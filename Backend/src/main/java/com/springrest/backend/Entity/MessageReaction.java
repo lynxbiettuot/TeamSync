@@ -21,6 +21,7 @@ public class MessageReaction {
     private Integer id;
 
     @Column(name="react_type")
+    @Enumerated(EnumType.STRING)
     private ReactType reactType;
 
     @Column(name="created_at")
@@ -28,11 +29,11 @@ public class MessageReaction {
 
     //map to message
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="message_id", foreignKey = @ForeignKey(name="MESSAGE_FK"))
+    @JoinColumn(name="message_id", foreignKey = @ForeignKey(name="MESSAGEREACT_ID_FK"))
     private Message message;
 
     //map to user
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="user_id", foreignKey = @ForeignKey(name="USER_ID_FK"))
+    @JoinColumn(name="user_id", foreignKey = @ForeignKey(name="MESSAGEREACT_USER_ID_FK"))
     private User user;
 }

@@ -36,6 +36,6 @@ public class RefreshToken {
 
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", foreignKey = @ForeignKey(name="USER_ID_FK"))
+    @JoinColumn(name = "user_id", foreignKey = @ForeignKey(name="REFRESHTOKEN_USER_ID_FK"))
     private User user;
 }

@@ -36,6 +36,7 @@ public class Message {
     private LocalDateTime deletedAt;
 
     @Column(name="message_type")
+    @Enumerated(EnumType.STRING)
     private MessageType messageType;
 
     // map to user
