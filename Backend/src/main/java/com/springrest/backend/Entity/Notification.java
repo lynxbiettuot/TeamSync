@@ -41,6 +41,6 @@ public class Notification {
 
     //map to user
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", foreignKey = @ForeignKey(name="NOTIFICATION_USER_ID_FK"))
     private User user;
 }

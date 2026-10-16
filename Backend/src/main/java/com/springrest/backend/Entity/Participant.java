@@ -22,7 +22,6 @@ public class Participant {
     private Integer id;
 
     @Column(name="joined_at")
-    @Enumerated(EnumType.STRING)
     private LocalDateTime joinedAt;
 
     @Column(name="last_read_at")
@@ -30,16 +29,16 @@ public class Participant {
 
     //map to user
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="user", foreignKey = @ForeignKey(name="USER_ID_FK"))
+    @JoinColumn(name="user", foreignKey = @ForeignKey(name="PARTICIPANT_USER_ID_FK"))
     private User user;
 
     //map to group roles
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="group_role", foreignKey = @ForeignKey(name="GROUP_ROLE_ID_FK"))
+    @JoinColumn(name="group_role", foreignKey = @ForeignKey(name="PARTICIPANT_GROUP_ROLE_ID_FK"))
     private GroupRole groupRole;
 
     //map to Conversation
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="conversation", foreignKey = @ForeignKey(name="CONVERSATION_ID_FK"))
+    @JoinColumn(name="conversation", foreignKey = @ForeignKey(name="PARTICIPANT_CONVERSATION_ID_FK"))
     private Conversation conversation;
 }

@@ -31,6 +31,6 @@ public class Attachment {
 
     //map to Message
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="attachment_id",foreignKey = @ForeignKey(name = "MESSAGE_FK"))
+    @JoinColumn(name="attachment_id",foreignKey = @ForeignKey(name = "ATTACHEMENT_MESSAGE_FK"))
     private Message message;
 }
