@@ -1,13 +1,12 @@
-import { useState } from 'react'
+import { AuthCard } from './components/auth/AuthCard';
+import './styles/auth.css';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <h1> Hello World</h1>
-    </>
-  )
+    <div className="auth-page">
+      <AuthCard />
+    </div>
+  );
 }
 
-export default App
+export default App;
