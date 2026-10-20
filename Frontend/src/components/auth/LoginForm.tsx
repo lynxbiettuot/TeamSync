@@ -1,21 +1,26 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { LoginFormValues } from '../../types/auth.types';
 import { authService } from '../../services/authService';
 import { isValidEmail } from '../../utils/validation';
 import { EyeIcon, EyeOffIcon, GoogleIcon, FacebookIcon, SpinnerIcon, AlertCircleIcon } from '../icons';
 
 interface LoginFormProps {
-  onRegister: () => void;
-  onForgotPassword: () => void;
+  onRegister?: () => void;
+  onForgotPassword?: () => void;
   onLoginSuccess?: (data: unknown) => void;
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onRegister, onForgotPassword, onLoginSuccess }) => {
+  const navigate = useNavigate();
   const [form, setForm] = useState<LoginFormValues>({ email: '', password: '' });
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormValues, string>>>({});
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
+
+  const handleRegister = onRegister || (() => navigate('/register'));
+  const handleForgotPassword = onForgotPassword || (() => navigate('/forgot-password'));
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -116,7 +121,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onRegister, onForgotPasswo
 
         {/* Quên mật khẩu */}
         <div className="auth-link-row">
-          <button type="button" className="auth-link" onClick={onForgotPassword}>Quên mật khẩu?</button>
+          <button type="button" className="auth-link" onClick={handleForgotPassword}>Quên mật khẩu?</button>
         </div>
 
         {/* Submit */}
@@ -128,7 +133,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onRegister, onForgotPasswo
       {/* Footer */}
       <div className="auth-footer">
         Không có tài khoản?{' '}
-        <button type="button" className="auth-link" onClick={onRegister}>Tạo một cái</button>
+        <button type="button" className="auth-link" onClick={handleRegister}>Tạo một cái</button>
       </div>
     </>
   );

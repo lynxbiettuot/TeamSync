@@ -1,6 +1,6 @@
-package com.springrest.backend.Entity;
+package com.springrest.backend.entity;
 
-import com.springrest.backend.Entity.Enum.NotificationType;
+import com.springrest.backend.entity.Enum.NotificationType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
