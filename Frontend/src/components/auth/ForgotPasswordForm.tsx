@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { ForgotPasswordStep } from '../../types/auth.types';
 import { authService } from '../../services/authService';
 import { isValidEmail } from '../../utils/validation';
 import { EyeIcon, EyeOffIcon, SpinnerIcon, AlertCircleIcon, CheckCircleIcon, ArrowLeftIcon } from '../icons';
 
 interface ForgotPasswordFormProps {
-  onBackToLogin: () => void;
+  onBackToLogin?: () => void;
 }
 
 export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackToLogin }) => {
+  const navigate = useNavigate();
+  const handleBackToLogin = onBackToLogin || (() => navigate('/login'));
+
   const [step, setStep] = useState<ForgotPasswordStep>('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -95,7 +99,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackTo
     return (
       <>
         {/* Nút quay lại điều hướng */}
-        <button type="button" className="auth-back-btn" onClick={onBackToLogin} aria-label="Quay lại">
+        <button type="button" className="auth-back-btn" onClick={handleBackToLogin} aria-label="Quay lại">
           <ArrowLeftIcon size={18} />
           <span>Quay lại đăng nhập</span>
         </button>
@@ -126,7 +130,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackTo
         </form>
         <div className="auth-links-center">
           <button type="button" className="auth-link" onClick={() => setStep('otp')}>Đã có mã đặt lại?</button>
-          <button type="button" className="auth-link" onClick={onBackToLogin}>Quay lại đăng nhập</button>
+          <button type="button" className="auth-link" onClick={handleBackToLogin}>Quay lại đăng nhập</button>
         </div>
       </>
     );
@@ -137,7 +141,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackTo
     return (
       <>
         {/* Nút quay lại điều hướng */}
-        <button type="button" className="auth-back-btn" onClick={onBackToLogin} aria-label="Quay lại đăng nhập">
+        <button type="button" className="auth-back-btn" onClick={handleBackToLogin} aria-label="Quay lại đăng nhập">
           <ArrowLeftIcon size={18} />
           <span>Quay lại đăng nhập</span>
         </button>
@@ -178,7 +182,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackTo
     return (
       <>
         {/* Nút quay lại điều hướng */}
-        <button type="button" className="auth-back-btn" onClick={onBackToLogin} aria-label="Quay lại đăng nhập">
+        <button type="button" className="auth-back-btn" onClick={handleBackToLogin} aria-label="Quay lại đăng nhập">
           <ArrowLeftIcon size={18} />
           <span>Quay lại đăng nhập</span>
         </button>
@@ -228,7 +232,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackTo
           </button>
         </form>
         <div className="auth-links-center">
-          <button type="button" className="auth-link" onClick={onBackToLogin}>Quay lại đăng nhập</button>
+          <button type="button" className="auth-link" onClick={handleBackToLogin}>Quay lại đăng nhập</button>
         </div>
       </>
     );
@@ -242,7 +246,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackTo
       </div>
       <h1 className="auth-title">Đổi mật khẩu thành công!</h1>
       <p className="auth-subtitle">Bạn có thể đăng nhập bằng mật khẩu mới ngay bây giờ.</p>
-      <button type="button" className="auth-btn auth-btn-primary" onClick={onBackToLogin}>
+      <button type="button" className="auth-btn auth-btn-primary" onClick={handleBackToLogin}>
         Đăng nhập ngay
       </button>
     </div>

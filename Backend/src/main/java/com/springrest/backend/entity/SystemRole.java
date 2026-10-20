@@ -1,6 +1,6 @@
-package com.springrest.backend.Entity;
+package com.springrest.backend.entity;
 
-import com.springrest.backend.Entity.Enum.SystemRoleLabel;
+import com.springrest.backend.entity.Enum.SystemRoleLabel;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

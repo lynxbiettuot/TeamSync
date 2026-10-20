@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { RegisterFormValues } from '../../types/auth.types';
 import { authService } from '../../services/authService';
 import { isValidEmail } from '../../utils/validation';
 import { GoogleIcon, FacebookIcon, EyeIcon, EyeOffIcon, SpinnerIcon, AlertCircleIcon, ArrowLeftIcon } from '../icons';
 
 interface RegisterFormProps {
-  onLogin: () => void;
+  onLogin?: () => void;
   onRegisterSuccess?: () => void;
 }
 
 export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterSuccess }) => {
+  const navigate = useNavigate();
   const [form, setForm] = useState<RegisterFormValues>({ email: '', otp: '', displayName: '', password: '' });
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const [showPw, setShowPw] = useState(false);
@@ -18,6 +20,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
+
+  const handleLogin = onLogin || (() => navigate('/login'));
+  const handleRegisterSuccess = onRegisterSuccess || (() => navigate('/login'));
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -64,7 +69,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
     setApiError('');
     try {
       await authService.register(form.email, form.otp, form.displayName, form.password);
-      onRegisterSuccess?.();
+      handleRegisterSuccess();
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Đăng ký thất bại');
     } finally {
@@ -82,7 +87,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
           if (otpSent) {
             setOtpSent(false);
           } else {
-            onLogin();
+            handleLogin();
           }
         }}
         aria-label="Quay lại"
@@ -228,7 +233,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
       {/* Footer */}
       <div className="auth-footer">
         Đã có tài khoản?{' '}
-        <button type="button" className="auth-link" onClick={onLogin}>Đăng nhập</button>
+        <button type="button" className="auth-link" onClick={handleLogin}>Đăng nhập</button>
       </div>
     </>
   );

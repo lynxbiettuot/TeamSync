@@ -1,12 +1,11 @@
-package com.springrest.backend.Entity;
+package com.springrest.backend.entity;
 
-import com.springrest.backend.Entity.Enum.GroupRoleType;
+import com.springrest.backend.entity.Enum.GroupRoleType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CollectionId;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

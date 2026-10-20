@@ -1,13 +1,12 @@
-package com.springrest.backend.Entity;
+package com.springrest.backend.entity;
 
-import com.springrest.backend.Entity.Enum.MessageType;
+import com.springrest.backend.entity.Enum.MessageType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.awt.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;

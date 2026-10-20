@@ -1,4 +1,4 @@
-package com.springrest.backend.Entity;
+package com.springrest.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

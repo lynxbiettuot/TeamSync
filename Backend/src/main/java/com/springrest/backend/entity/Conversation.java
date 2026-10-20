@@ -1,6 +1,6 @@
-package com.springrest.backend.Entity;
+package com.springrest.backend.entity;
 
-import com.springrest.backend.Entity.Enum.ConversationType;
+import com.springrest.backend.entity.Enum.ConversationType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

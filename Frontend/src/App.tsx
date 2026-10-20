@@ -1,11 +1,12 @@
-import { AuthCard } from './components/auth/AuthCard';
+import { BrowserRouter } from 'react-router-dom';
+import { AppRoutes } from './routes';
 import './styles/auth.css';
 
 function App() {
   return (
-    <div className="auth-page">
-      <AuthCard />
-    </div>
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   );
 }
 

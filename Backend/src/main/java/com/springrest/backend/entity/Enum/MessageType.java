@@ -1,4 +1,4 @@
-package com.springrest.backend.Entity.Enum;
+package com.springrest.backend.entity.Enum;
 
 public enum MessageType {
     TEXT,
