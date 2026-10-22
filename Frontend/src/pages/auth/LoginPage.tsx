@@ -5,8 +5,8 @@ import { LoginForm } from '../../components/auth/LoginForm';
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const handleLoginSuccess = (_data: unknown) => {
-    navigate('/dashboard');
+  const handleLoginSuccess = () => {
+    navigate('/chat', { replace: true });
   };
 
   return (

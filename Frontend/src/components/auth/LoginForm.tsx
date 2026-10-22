@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { LoginFormValues } from '../../types/auth.types';
-import { authService } from '../../services/authService';
+import { useAuth } from '../../contexts/AuthContext';
 import { isValidEmail } from '../../utils/validation';
 import { EyeIcon, EyeOffIcon, GoogleIcon, FacebookIcon, SpinnerIcon, AlertCircleIcon } from '../icons';
 
@@ -13,6 +13,7 @@ interface LoginFormProps {
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onRegister, onForgotPassword, onLoginSuccess }) => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [form, setForm] = useState<LoginFormValues>({ email: '', password: '' });
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormValues, string>>>({});
   const [showPw, setShowPw] = useState(false);
@@ -45,8 +46,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onRegister, onForgotPasswo
     setLoading(true);
     setApiError('');
     try {
-      const data = await authService.login(form.email, form.password);
-      onLoginSuccess?.(data);
+      const data = await login(form.email, form.password);
+      if (onLoginSuccess) {
+        onLoginSuccess(data);
+      } else {
+        navigate('/chat', { replace: true });
+      }
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Đăng nhập thất bại');
     } finally {

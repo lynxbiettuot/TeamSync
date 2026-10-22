@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { RegisterFormValues } from '../../types/auth.types';
 import { authService } from '../../services/authService';
@@ -15,14 +15,38 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
   const [form, setForm] = useState<RegisterFormValues>({ email: '', otp: '', displayName: '', password: '' });
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const [showPw, setShowPw] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);     // OTP đã gửi chưa
+  const [otpSent, setOtpSent] = useState(false);       // OTP đã gửi chưa
   const [otpLoading, setOtpLoading] = useState(false); // Đang gửi OTP
+  const [countdown, setCountdown] = useState(0);       // Đếm ngược gửi lại OTP (giây)
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
 
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const handleLogin = onLogin || (() => navigate('/login'));
   const handleRegisterSuccess = onRegisterSuccess || (() => navigate('/login'));
+
+  // Dọn dẹp timer khi component unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  const startCountdown = (seconds: number = 60) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setCountdown(seconds);
+    timerRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -33,20 +57,38 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
 
   // Gửi mã xác minh email
   const handleSendOtp = async () => {
-    if (!form.email.trim()) return setErrors({ email: 'Vui lòng nhập email' });
-    if (!isValidEmail(form.email)) return setErrors({ email: 'Email không hợp lệ' });
+    if (otpLoading || (otpSent && countdown > 0)) return;
+
+    if (!form.email.trim()) {
+      return setErrors(prev => ({ ...prev, email: 'Vui lòng nhập email' }));
+    }
+    if (!isValidEmail(form.email)) {
+      return setErrors(prev => ({ ...prev, email: 'Email không hợp lệ' }));
+    }
 
     setOtpLoading(true);
     setApiError('');
     try {
-      await authService.sendRegisterOtp(form.email);
+      await authService.sendRegisterOtp(form.email.trim());
       setOtpSent(true);
+      startCountdown(60);
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Gửi mã xác minh thất bại');
     } finally {
       setOtpLoading(false);
     }
   };
+
+  // Nút tạo tài khoản chỉ bấm được khi:
+  // 1. Đã bấm gửi email và nhận OTP thành công (otpSent === true)
+  // 2. Đã nhập đủ 3 trường: Mã xác minh (otp), Tên người dùng (displayName), Mật khẩu (password)
+  const isAllFieldsFilled = Boolean(
+    otpSent &&
+    form.email.trim() &&
+    form.otp.trim() &&
+    form.displayName.trim() &&
+    form.password.trim()
+  );
 
   // Validate toàn bộ form trước khi đăng ký
   const validate = (): boolean => {
@@ -56,8 +98,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
     if (!form.otp.trim()) errs.otp = 'Vui lòng nhập mã xác minh';
     if (!form.displayName.trim()) errs.displayName = 'Vui lòng nhập tên người dùng';
     if (!form.password) errs.password = 'Vui lòng nhập mật khẩu';
-    else if (form.password.length < 6) errs.password = 'Mật khẩu tối thiểu 6 ký tự';
-    if (!agreeTerms) errs.terms = 'Bạn cần đồng ý với điều khoản';
+    else if (form.password.length < 8) errs.password = 'Mật khẩu tối thiểu 8 ký tự';
+    if (!agreeTerms) errs.terms = 'Bạn cần đồng ý với Điều khoản dịch vụ và Chính sách bảo mật';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -68,13 +110,35 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
     setLoading(true);
     setApiError('');
     try {
-      await authService.register(form.email, form.otp, form.displayName, form.password);
+      await authService.register(
+        form.email.trim(),
+        form.otp.trim(),
+        form.displayName.trim(),
+        form.password
+      );
       handleRegisterSuccess();
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Đăng ký thất bại');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getOtpButtonText = () => {
+    if (otpLoading) {
+      return (
+        <>
+          <SpinnerIcon /> Đang gửi...
+        </>
+      );
+    }
+    if (otpSent && countdown > 0) {
+      return `Gửi lại sau ${countdown}s`;
+    }
+    if (otpSent && countdown === 0) {
+      return 'Gửi lại mã xác minh';
+    }
+    return 'Gửi mã xác minh';
   };
 
   return (
@@ -86,6 +150,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
         onClick={() => {
           if (otpSent) {
             setOtpSent(false);
+            setCountdown(0);
+            if (timerRef.current) clearInterval(timerRef.current);
+            setForm(prev => ({ ...prev, otp: '' }));
           } else {
             handleLogin();
           }
@@ -120,7 +187,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
         </div>
       )}
 
-      <form className="auth-form" onSubmit={handleSubmit} noValidate>
+      <form className="auth-form" onSubmit={handleSubmit}>
         {/* Email */}
         <div className="auth-field">
           <div className="auth-input-wrap">
@@ -133,22 +200,23 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
               onChange={handleChange}
               disabled={loading || otpSent}
               autoComplete="email"
+              required
             />
           </div>
           {errors.email && <span className="auth-error-msg">{errors.email}</span>}
         </div>
 
-        {/* Gửi mã xác minh */}
+        {/* Gửi mã xác minh / Đếm ngược */}
         <button
           type="button"
           className="auth-btn auth-btn-secondary"
           onClick={handleSendOtp}
-          disabled={otpLoading || otpSent}
+          disabled={otpLoading || (otpSent && countdown > 0)}
         >
-          {otpLoading ? <><SpinnerIcon /> Đang gửi...</> : otpSent ? '✓ Đã gửi mã xác minh' : 'Gửi mã xác minh'}
+          {getOtpButtonText()}
         </button>
 
-        {/* OTP — chỉ hiện sau khi gửi */}
+        {/* OTP — chỉ hiện sau khi gửi mã xác minh (ảnh 2) */}
         {otpSent && (
           <div className="auth-field">
             <div className="auth-input-wrap">
@@ -156,11 +224,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
                 type="text"
                 name="otp"
                 className={`auth-input ${errors.otp ? 'has-error' : ''}`}
-                placeholder="Nhập mã xác minh"
+                placeholder="Mã xác minh"
                 value={form.otp}
                 onChange={handleChange}
                 disabled={loading}
                 autoComplete="one-time-code"
+                required
               />
             </div>
             {errors.otp && <span className="auth-error-msg">{errors.otp}</span>}
@@ -179,6 +248,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
               onChange={handleChange}
               disabled={loading}
               autoComplete="name"
+              required
             />
           </div>
           {errors.displayName && <span className="auth-error-msg">{errors.displayName}</span>}
@@ -196,6 +266,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
               onChange={handleChange}
               disabled={loading}
               autoComplete="new-password"
+              minLength={8}
+              required
             />
             <button type="button" className="auth-toggle-pw" onClick={() => setShowPw(!showPw)} tabIndex={-1}>
               {showPw ? <EyeOffIcon /> : <EyeIcon />}
@@ -216,6 +288,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
                 if (errors.terms) setErrors(prev => ({ ...prev, terms: '' }));
               }}
               disabled={loading}
+              required
             />
             <span>
               Tôi đồng ý với <strong className="auth-link">Điều khoản dịch vụ</strong> và <strong className="auth-link">Chính sách bảo mật</strong>.
@@ -224,8 +297,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onLogin, onRegisterS
           {errors.terms && <span className="auth-error-msg">{errors.terms}</span>}
         </div>
 
-        {/* Submit */}
-        <button type="submit" className="auth-btn auth-btn-primary" disabled={loading}>
+        {/* Submit — chưa gửi OTP hoặc chưa điền đủ 3 trường thì disabled */}
+        <button
+          type="submit"
+          className="auth-btn auth-btn-primary"
+          disabled={!isAllFieldsFilled || loading}
+        >
           {loading ? <><SpinnerIcon /> Đang tạo tài khoản...</> : 'Tạo tài khoản'}
         </button>
       </form>

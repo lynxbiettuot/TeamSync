@@ -260,6 +260,13 @@
   cursor: not-allowed;
 }
 
+.auth-btn-secondary:disabled {
+  background: #e9ecef;
+  color: #475569;
+  opacity: 0.85;
+  cursor: not-allowed;
+}
+
 /* ===== Checkbox ===== */
 
 .auth-checkbox-label {
