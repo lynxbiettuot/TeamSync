@@ -128,4 +128,50 @@ public class AuthController {
             return ResponseEntity.badRequest().body(data);
         }
     }
+
+    @PostMapping("refresh")
+    public ResponseEntity<?> refreshToken(@CookieValue(name = "refreshToken", required = false) String refreshToken) {
+        try {
+            LoginResult result = authService.refreshToken(refreshToken);
+
+            Map<String, Object> data = Map.of(
+                    "accessToken", result.getAccessToken(),
+                    "tokenType", "Bearer",
+                    "expiresIn", result.getExpiresIn(),
+                    "user", result.getUser()
+            );
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Refresh token successful",
+                    "data", data
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(401).body(Map.of(
+                    "success", false,
+                    "message", e.getMessage() != null ? e.getMessage() : "Session expired"
+            ));
+        }
+    }
+
+    @PostMapping("logout")
+    public ResponseEntity<?> logout(@CookieValue(name = "refreshToken", required = false) String refreshToken) {
+        if (refreshToken != null) {
+            authService.logout(refreshToken);
+        }
+
+        // Xóa cookie trên trình duyệt
+        ResponseCookie clearCookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Strict")
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                .body(Map.of("success", true, "message", "Logged out successfully"));
+    }
+
 }
