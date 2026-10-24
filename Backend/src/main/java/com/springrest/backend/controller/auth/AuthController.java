@@ -1,8 +1,6 @@
 package com.springrest.backend.controller.auth;
 
-import com.springrest.backend.dto.authentication.request.LoginRequest;
-import com.springrest.backend.dto.authentication.request.RegisterRequest;
-import com.springrest.backend.dto.authentication.request.SendOtpRequest;
+import com.springrest.backend.dto.authentication.request.*;
 import com.springrest.backend.dto.authentication.response.LoginResult;
 import com.springrest.backend.dto.authentication.response.UserResponseDTO;
 import com.springrest.backend.service.auth.AuthService;
@@ -81,6 +79,53 @@ public class AuthController {
             errorResponse.put("data", null);
 
             return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @PostMapping("forgot-password")
+    public ResponseEntity<?> resetPawword(@RequestBody SendOtpRequest request) {
+        Map<String, Object> data = new HashMap<>();
+        try{
+            String resutl = authService.reSentOtp(request);
+            data.put("success", true);
+            data.put("resutl", resutl);
+            data.put("message", "Reset password successful");
+            return ResponseEntity.ok().body(data);
+        }catch (RuntimeException e) {
+            data.put("success", true);
+            data.put("resutl", null);
+            data.put("message",e.getMessage() != null ? e.getMessage() : "Can't send otp");
+            return ResponseEntity.badRequest().body(data);
+        }
+    }
+
+    @PostMapping("verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody VerifyOtp request) {
+        Map<String, Object> data = new HashMap<>();
+        try{
+            String result = authService.verifyOtp(request);
+            data.put("success", true);
+            data.put("resutl", result);
+            return ResponseEntity.ok().body(data);
+        }catch (RuntimeException e) {
+            data.put("success", false);
+            data.put("resutl", null);
+            return ResponseEntity.badRequest().body(data);
+        }
+    }
+
+    @PostMapping("reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody VerifyPassword request) {
+        Map<String, Object> data = new HashMap<>();
+        try{
+            String result = authService.verifyPassword(request);
+            data.put("success", true);
+            data.put("message", result);
+            return ResponseEntity.ok().body(data);
+        }catch (RuntimeException e) {
+            data.put("success", false);
+            data.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(data);
         }
     }
 }

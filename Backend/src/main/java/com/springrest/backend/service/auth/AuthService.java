@@ -1,7 +1,6 @@
 package com.springrest.backend.service.auth;
 
-import com.springrest.backend.dto.authentication.request.LoginRequest;
-import com.springrest.backend.dto.authentication.request.RegisterRequest;
+import com.springrest.backend.dto.authentication.request.*;
 import com.springrest.backend.dto.authentication.response.LoginResponse;
 import com.springrest.backend.dto.authentication.response.LoginResult;
 import com.springrest.backend.dto.authentication.response.UserResponseDTO;
@@ -52,6 +51,14 @@ public class AuthService {
         redisTemplate.opsForValue().set(redisKey, otp,OTP_TTL_MINUTES, TimeUnit.MINUTES);
         mailService.sendEmail(email, "Your regisration code: ",otp);
 
+    }
+
+    public void sendResetPwOtp(String email) {
+        String otp = generateOtp();
+        String redisKey = RESET_PW_OTP_PREFIX + email;
+
+        redisTemplate.opsForValue().set(redisKey, otp,OTP_TTL_MINUTES, TimeUnit.MINUTES);
+        mailService.sendEmail(email, "Your reset passwrod code: ",otp);
     }
 
     public void register(RegisterRequest registerRequest) {
@@ -109,5 +116,76 @@ public class AuthService {
         UserResponseDTO userData = new UserResponseDTO(actualUser.getId(), actualUser.getEmail(),  actualUser.getDisplayName(), actualUser.getAvatarUrl(), actualUser.getStatus());
 
         return new LoginResult(jwtToken,refreshToken,jwtTokenProvider.getJwtExpiration(),userData);
+    }
+
+    public String reSentOtp(SendOtpRequest request) {
+        String email = request.getEmail();
+
+        if(email == null || email.isEmpty() || email.length() <= 10) {
+            throw new RuntimeException("Invalid email");
+        }
+
+        String postFixEmail = email.substring(email.length() - 10);
+        if(!postFixEmail.equals("@gmail.com")){
+            throw new RuntimeException("Invalid email");
+        }
+
+        Optional<User> user = userRepository.findByEmail(email);
+        if(user.isEmpty()) {
+            throw new RuntimeException("Email is not existed!");
+        }
+        sendResetPwOtp(email);
+        return "Otp is sent, Please check your email";
+    }
+
+    public String verifyOtp(VerifyOtp request) {
+        String email = request.getEmail();
+        String otp = request.getOtp();
+
+        Optional<User> user = userRepository.findByEmail(email);
+        if(user.isEmpty()) {
+            throw new RuntimeException("Email is not existed!");
+        }
+
+        String redisKey = RESET_PW_OTP_PREFIX + email;
+        String cahcedOtp = redisTemplate.opsForValue().get(redisKey);
+        if(cahcedOtp == null || !cahcedOtp.equals(otp)) {
+            throw new RuntimeException("OTP has expired");
+        }
+
+        String message = "Completed";
+        return message;
+    }
+
+    public String verifyPassword(VerifyPassword request) {
+        String email = request.getEmail();
+        String password = request.getNewResetPassword();
+        String resetPassword = request.getNewConfirmResetPassword();
+        String otp = request.getOtp();
+
+        System.out.println(email + " " + password + " " + resetPassword + " " + otp);
+
+        if(!userRepository.existsByEmail(email)) {
+            throw new RuntimeException("Email is not existed");
+        }
+
+        if(password == null || resetPassword == null || otp == null) {
+            throw new RuntimeException("Password or reset Password or OTP is null");
+        }
+
+        if(!password.equals(resetPassword)) {
+            throw new RuntimeException("Passwords do not match");
+        }
+
+        String redisKey = RESET_PW_OTP_PREFIX + email;
+        String cahcedOtp = redisTemplate.opsForValue().get(redisKey);
+        if(cahcedOtp == null || !cahcedOtp.equals(otp)) {
+            throw new RuntimeException("OTP has expired");
+        }
+
+        User user = userRepository.findByEmail(email).get();
+        user.setPassword(passwordEncoder.encode(password));
+        userRepository.save(user);
+        return "Password change completed!";
     }
 }
