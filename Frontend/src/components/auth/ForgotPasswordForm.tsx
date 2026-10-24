@@ -77,7 +77,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackTo
     setLoading(true);
     setApiError('');
     try {
-      await authService.resetPassword(email, otp, newPassword);
+      await authService.resetPassword(email, otp, newPassword, confirmPassword);
       setStep('success');
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Đặt lại mật khẩu thất bại');

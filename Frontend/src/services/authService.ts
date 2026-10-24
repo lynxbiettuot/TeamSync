@@ -110,11 +110,21 @@ export const authService = {
   },
 
   // POST /api/auth/reset-password — Đặt mật khẩu mới
-  async resetPassword(email: string, otp: string, newPassword: string) {
+  async resetPassword(
+    email: string,
+    otp: string,
+    newResetPassword: string,
+    newConfirmResetPassword: string
+  ) {
     const res = await fetch(`${BASE_URL}/reset-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, otp, newPassword }),
+      body: JSON.stringify({
+        email,
+        newResetPassword,
+        newConfirmResetPassword,
+        otp,
+      }),
     });
     if (!res.ok) throw new Error((await res.json()).message || 'Đặt lại mật khẩu thất bại');
     return res.json();
