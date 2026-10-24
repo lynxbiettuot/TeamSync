@@ -58,8 +58,44 @@ public class AuthService {
         String redisKey = RESET_PW_OTP_PREFIX + email;
 
         redisTemplate.opsForValue().set(redisKey, otp,OTP_TTL_MINUTES, TimeUnit.MINUTES);
-        mailService.sendEmail(email, "Your reset passwrod code: ",otp);
+        mailService.sendEmail(email, "Your reset password code: ",otp);
     }
+
+    public LoginResult refreshToken(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new RuntimeException("Refresh token is missing");
+        }
+
+        String redisKey = "REFRESH_TOKEN:" + refreshToken;
+        String email = redisTemplate.opsForValue().get(redisKey);
+
+        if (email == null) {
+            throw new RuntimeException("Login session is end");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // New access token
+        String newAccessToken = jwtTokenProvider.generateJwtToken(user);
+
+        UserResponseDTO userData = new UserResponseDTO(
+                user.getId(),
+                user.getEmail(),
+                user.getDisplayName(),
+                user.getAvatarUrl(),
+                user.getStatus()
+        );
+
+        return new LoginResult(newAccessToken, refreshToken, jwtTokenProvider.getJwtExpiration(), userData);
+    }
+
+    public void logout(String refreshToken) {
+        if (refreshToken != null) {
+            redisTemplate.delete("REFRESH_TOKEN:" + refreshToken);
+        }
+    }
+
 
     public void register(RegisterRequest registerRequest) {
         // validate
@@ -110,6 +146,10 @@ public class AuthService {
 
         //refresh token
         String refreshToken = jwtTokenProvider.generateJwtRefreshToken();
+
+        String redisKeyRefreshToken = "REFRESH_TOKEN:" + refreshToken;
+
+        redisTemplate.opsForValue().set(redisKeyRefreshToken, user.get().getEmail(), 7, TimeUnit.DAYS);
 
         User actualUser = user.get();
 
