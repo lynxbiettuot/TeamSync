@@ -18,7 +18,7 @@ public class JwtTokenProvider {
 
     private final long jwtExpiration = 86400;
 
-    public String generateJwtToken( User user ) {
+    public String generateJwtToken(User user) {
         LocalDateTime now = LocalDateTime.now();
 
         LocalDateTime expiration = now.plusSeconds(jwtExpiration);
@@ -28,6 +28,7 @@ public class JwtTokenProvider {
 
         String jwtString = Jwts.builder()
                 .setSubject(user.getEmail())
+                .claim("userId", user.getId())
                 .setIssuedAt(issuedAtDate)
                 .setExpiration(expirationDate)
                 .signWith(SignatureAlgorithm.HS256, jwtSecret)
@@ -35,7 +36,7 @@ public class JwtTokenProvider {
         return jwtString;
     }
 
-    public String generateJwtRefreshToken( ) {
+    public String generateJwtRefreshToken() {
         return UUID.randomUUID().toString();
     }
 }
