@@ -25,8 +25,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="/dashboard" element={<DashboardPage />} />
       </Route>
 
-      {/* Mặc định chuyển hướng về /chat (ProtectedRoute sẽ chuyển sang /login nếu chưa xác thực) */}
-      <Route path="/" element={<Navigate to="/chat" replace />} />
+      {/* Mặc định chuyển hướng về /login (PublicRoute sẽ chuyển sang /chat nếu đã đăng nhập) */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
 
       {/* Trang 404 */}
       <Route path="*" element={<NotFoundPage />} />

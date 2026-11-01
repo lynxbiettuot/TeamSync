@@ -1,50 +1,162 @@
 // src/pages/chat/ChatPage.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiClient } from '../../services/apiClient';
+import { chatService } from '../../services/chatService';
+import { useChatMessages } from '../../hooks/useChatMessages';
+import { useChatWebSocket } from '../../hooks/useChatWebSocket';
+import { ChatSidebar } from '../../components/chat/ChatSidebar';
+import { ChatHeader } from '../../components/chat/ChatHeader';
+import { MessageList } from '../../components/chat/MessageList';
+import { MessageInput } from '../../components/chat/MessageInput';
+import type { Conversation, ChatUser, Message } from '../../types/chat.types';
 
 export const ChatPage: React.FC = () => {
   const { user, logout } = useAuth();
-  const [messages, setMessages] = useState<Array<{ id: number; text: string; sender: string; time: string }>>([
-    {
-      id: 1,
-      text: `Xin chào ${user?.displayName || 'bạn'}! Chào mừng bạn đến với TeamSync Workspace.`,
-      sender: 'Hệ thống',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
-  const [inputText, setInputText] = useState('');
-  const [testApiStatus, setTestApiStatus] = useState<string | null>(null);
+  const currentUserId = user?.id ? Number(user.id) : undefined;
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim()) return;
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+  const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
+  const [activeChatUser, setActiveChatUser] = useState<ChatUser | null>(null);
 
-    const newMsg = {
-      id: Date.now(),
-      text: inputText.trim(),
-      sender: user?.displayName || user?.email || 'Tôi',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
+  // 1. Quản lý tin nhắn & Cursor-based Pagination
+  const {
+    messages,
+    hasMore,
+    isLoadingInitial,
+    isLoadingMore,
+    chatContainerRef,
+    loadOlderMessages,
+    appendMessage,
+  } = useChatMessages({ conversationId: activeConversationId });
 
-    setMessages(prev => [...prev, newMsg]);
-    setInputText('');
-  };
-
-  // Nút test gọi API có authentication Header Bearer <accessToken>
-  const handleTestProtectedApi = async () => {
+  // 2. Tải danh sách hội thoại gần đây khi vào trang
+  const fetchConversations = useCallback(async () => {
+    setIsLoadingConversations(true);
     try {
-      setTestApiStatus('Đang gửi request với Header Authorization: Bearer <accessToken>...');
-      // Gọi thử endpoint bảo vệ (nếu backend có API, apiClient sẽ tự đính kèm token và auto-refresh nếu 401)
-      const res = await apiClient.get<any>('/api/users/me');
-      setTestApiStatus(`Thành công: ${JSON.stringify(res)}`);
+      const list = await chatService.getConversations();
+      setConversations(list);
     } catch (err) {
-      setTestApiStatus(`Kết quả: ${err instanceof Error ? err.message : 'API test hoàn thành'}`);
+      console.error('Lỗi khi tải danh sách hội thoại:', err);
+      setConversations([]);
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  // 3. Xử lý khi có tin nhắn mới từ WebSocket STOMP (/user/queue/messages)
+  const handleIncomingMessage = useCallback(
+    (newMsg: Message) => {
+      const msgConvId = newMsg.conversationId ?? newMsg.conversation_id;
+
+      // Nếu đang mở đúng conversation đó: append tin nhắn vào khung chat & cuộn xuống đáy
+      if (activeConversationId && msgConvId === activeConversationId) {
+        appendMessage(newMsg);
+      }
+
+      // Cập nhật và đẩy cuộc hội thoại lên đầu Sidebar
+      setConversations((prev) => {
+        const existingIndex = prev.findIndex((c) => c.id === msgConvId);
+        const now = new Date().toISOString();
+
+        if (existingIndex > -1) {
+          const updatedConv: Conversation = {
+            ...prev[existingIndex],
+            lastMessage: newMsg.content,
+            last_message: newMsg.content,
+            updatedAt: newMsg.createdAt || newMsg.created_at || now,
+            updated_at: newMsg.createdAt || newMsg.created_at || now,
+          };
+          const nextList = [...prev];
+          nextList.splice(existingIndex, 1);
+          return [updatedConv, ...nextList];
+        }
+
+        // Nếu là conversation mới chưa có trong list, fetch lại toàn bộ
+        fetchConversations();
+        return prev;
+      });
+    },
+    [activeConversationId, appendMessage, fetchConversations]
+  );
+
+  // 4. Khởi tạo kết nối STOMP WebSocket
+  const { isConnected, sendMessage } = useChatWebSocket({
+    onMessageReceived: handleIncomingMessage,
+  });
+
+  // 5. Chọn cuộc hội thoại
+  const handleSelectConversation = (conversationId: number, otherUser?: ChatUser) => {
+    setActiveConversationId(conversationId);
+    if (otherUser) {
+      setActiveChatUser(otherUser);
+    } else {
+      const found = conversations.find((c) => c.id === conversationId);
+      setActiveChatUser(found?.otherUser || null);
     }
   };
 
+  // 6. Gửi tin nhắn qua STOMP (/app/chat.send)
+  const handleSendMessage = (content: string) => {
+    if (!activeConversationId) return;
+
+    // Tìm receiver_id từ activeChatUser hoặc otherUser trong conversation
+    const currentConv = conversations.find((c) => c.id === activeConversationId);
+    const receiverId = activeChatUser?.id || currentConv?.otherUser?.id;
+
+    if (!receiverId) {
+      console.warn('Không xác định được receiver_id');
+      return;
+    }
+
+    const payload = {
+      conversation_id: activeConversationId,
+      receiver_id: receiverId,
+      content,
+      message_type: 'TEXT' as const,
+    };
+
+    const sent = sendMessage(payload);
+
+    if (sent) {
+      // Cập nhật tin nhắn lên đầu sidebar ngay lập tức
+      const now = new Date().toISOString();
+      setConversations((prev) => {
+        const existingIndex = prev.findIndex((c) => c.id === activeConversationId);
+        if (existingIndex > -1) {
+          const updatedConv = {
+            ...prev[existingIndex],
+            lastMessage: content,
+            last_message: content,
+            updatedAt: now,
+            updated_at: now,
+          };
+          const nextList = [...prev];
+          nextList.splice(existingIndex, 1);
+          return [updatedConv, ...nextList];
+        }
+        return prev;
+      });
+    }
+  };
+
+  const activeConv = conversations.find((c) => c.id === activeConversationId);
+
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#F8FAFC', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+    <div
+      style={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#F8FAFC',
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+      }}
+    >
       {/* Top Navbar */}
       <header
         style={{
@@ -69,17 +181,34 @@ export const ChatPage: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: 700,
+              fontWeight: 800,
               fontSize: '16px',
             }}
           >
             TS
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: '16px', color: '#1E293B' }}>TeamSync Chat</div>
-            <div style={{ fontSize: '12px', color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}></span>
-              Trực tuyến ({user?.status || 'ACTIVE'})
+            <div style={{ fontWeight: 800, fontSize: '16px', color: '#1E293B' }}>
+              TeamSync Workspace
+            </div>
+            <div
+              style={{
+                fontSize: '11.5px',
+                color: isConnected ? '#10B981' : '#F59E0B',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: isConnected ? '#10B981' : '#F59E0B',
+                }}
+              />
+              {isConnected ? 'Realtime Connected' : 'Connecting to Chat Server...'}
             </div>
           </div>
         </div>
@@ -87,7 +216,9 @@ export const ChatPage: React.FC = () => {
         {/* User Info & Logout */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B' }}>{user?.displayName || 'Người dùng'}</div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B' }}>
+              {user?.displayName || 'Người dùng'}
+            </div>
             <div style={{ fontSize: '12px', color: '#64748B' }}>{user?.email}</div>
           </div>
           <button
@@ -101,14 +232,10 @@ export const ChatPage: React.FC = () => {
               fontWeight: 600,
               cursor: 'pointer',
               fontSize: '13.5px',
-              transition: 'all 0.2s ease',
+              transition: 'background 0.2s',
             }}
-            onMouseOver={(e) => {
-              (e.currentTarget as HTMLElement).style.background = '#FEF2F2';
-            }}
-            onMouseOut={(e) => {
-              (e.currentTarget as HTMLElement).style.background = '#FFFFFF';
-            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#FEF2F2')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
           >
             Đăng xuất
           </button>
@@ -117,138 +244,88 @@ export const ChatPage: React.FC = () => {
 
       {/* Main Chat Workspace */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Sidebar */}
-        <aside
+        {/* Sidebar (Bên trái): Search + Recent conversations */}
+        <ChatSidebar
+          conversations={conversations}
+          activeConversationId={activeConversationId}
+          onSelectConversation={handleSelectConversation}
+          isLoadingConversations={isLoadingConversations}
+        />
+
+        {/* Main Chat (Bên phải) */}
+        <main
           style={{
-            width: '280px',
-            background: '#FFFFFF',
-            borderRight: '1px solid #E2E8F0',
+            flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            padding: '16px',
+            background: '#F8FAFC',
+            position: 'relative',
           }}
         >
-          <div style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: '12px' }}>
-            Kênh trao đổi
-          </div>
-          <div
-            style={{
-              padding: '10px 12px',
-              borderRadius: '8px',
-              background: '#EFF6FF',
-              color: '#2563EB',
-              fontWeight: 600,
-              fontSize: '14px',
-              cursor: 'pointer',
-              marginBottom: '6px',
-            }}
-          >
-            # Kênh chung (General)
-          </div>
+          {activeConversationId ? (
+            <>
+              {/* Header: Tên và Avatar người đang chat */}
+              <ChatHeader
+                user={activeChatUser || activeConv?.otherUser}
+                conversationName={activeConv?.name}
+              />
 
-          <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #E2E8F0' }}>
-            <button
-              type="button"
-              onClick={handleTestProtectedApi}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px dashed #93C5FD',
-                background: '#F0FDF4',
-                color: '#166534',
-                fontSize: '12.5px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Test Authenticated API
-            </button>
-            {testApiStatus && (
-              <div style={{ marginTop: '8px', fontSize: '11px', color: '#64748B', wordBreak: 'break-all', lineHeight: 1.4 }}>
-                {testApiStatus}
-              </div>
-            )}
-          </div>
-        </aside>
+              {/* Message List: Khung hiển thị tin nhắn (có scroll, cursor-based pagination) */}
+              <MessageList
+                messages={messages}
+                currentUserId={currentUserId}
+                hasMore={hasMore}
+                isLoadingInitial={isLoadingInitial}
+                isLoadingMore={isLoadingMore}
+                chatContainerRef={chatContainerRef}
+                onScrollToTop={loadOlderMessages}
+              />
 
-        {/* Chat Area */}
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#F8FAFC' }}>
-          {/* Message List */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {messages.map((m) => {
-              const isMe = m.sender === (user?.displayName || user?.email || 'Tôi');
-              return (
-                <div
-                  key={m.id}
-                  style={{
-                    alignSelf: isMe ? 'flex-end' : 'flex-start',
-                    maxWidth: '65%',
-                  }}
-                >
-                  <div style={{ fontSize: '11px', color: '#64748B', marginBottom: '4px', textAlign: isMe ? 'right' : 'left' }}>
-                    {m.sender} • {m.time}
-                  </div>
-                  <div
-                    style={{
-                      padding: '12px 16px',
-                      borderRadius: isMe ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
-                      background: isMe ? '#2563EB' : '#FFFFFF',
-                      color: isMe ? '#FFFFFF' : '#1E293B',
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                      fontSize: '14px',
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {m.text}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Chat Input */}
-          <form
-            onSubmit={handleSendMessage}
-            style={{
-              padding: '16px 24px',
-              background: '#FFFFFF',
-              borderTop: '1px solid #E2E8F0',
-              display: 'flex',
-              gap: '12px',
-            }}
-          >
-            <input
-              type="text"
-              placeholder="Nhập tin nhắn..."
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              {/* Message Input: Ô nhập tin nhắn và nút Gửi */}
+              <MessageInput
+                onSendMessage={handleSendMessage}
+                disabled={!isConnected && false} // Vẫn cho phép gõ tin nhắn
+              />
+            </>
+          ) : (
+            /* Khi chưa chọn cuộc hội thoại nào */
+            <div
               style={{
                 flex: 1,
-                height: '42px',
-                padding: '0 16px',
-                borderRadius: '8px',
-                border: '1.5px solid #E2E8F0',
-                outline: 'none',
-                fontSize: '14px',
-              }}
-            />
-            <button
-              type="submit"
-              style={{
-                padding: '0 20px',
-                borderRadius: '8px',
-                background: '#2563EB',
-                color: '#FFFFFF',
-                border: 'none',
-                fontWeight: 600,
-                fontSize: '14px',
-                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#94A3B8',
+                gap: '12px',
+                padding: '24px',
+                textAlign: 'center',
               }}
             >
-              Gửi
-            </button>
-          </form>
+              <div
+                style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '16px',
+                  background: '#EFF6FF',
+                  color: '#2563EB',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '28px',
+                }}
+              >
+                💬
+              </div>
+              <div style={{ fontSize: '18px', fontWeight: 700, color: '#1E293B' }}>
+                Chào mừng bạn đến với TeamSync Chat
+              </div>
+              <p style={{ fontSize: '14px', color: '#64748B', maxWidth: '360px', margin: 0 }}>
+                Hãy tìm kiếm người dùng ở ô bên trái hoặc chọn một cuộc hội thoại gần đây để bắt đầu
+                nhắn tin.
+              </p>
+            </div>
+          )}
         </main>
       </div>
     </div>

@@ -14,4 +14,15 @@ public class UserResponseDTO {
     private String displayName;
     private String avatarUrl;
     private UserStatus status;
+
+    @Override
+    public String toString() {
+        return "UserResponseDTO{" +
+                "email='" + email + '\'' +
+                ", id=" + id +
+                ", displayName='" + displayName + '\'' +
+                ", avatarUrl='" + avatarUrl + '\'' +
+                ", status=" + status +
+                '}';
+    }
 }
