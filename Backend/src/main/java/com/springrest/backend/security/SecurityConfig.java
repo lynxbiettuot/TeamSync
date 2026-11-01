@@ -41,11 +41,10 @@ public class SecurityConfig {
         return http.build();
     }
 
-    //khắc phục lỗi cuả http.cors(Customizer.withDefaults()) bằng cách chỉ định các cổng được pass
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Cho phép frontend ở cổng 5173 truy cập
         configuration.setAllowedOrigins(List.of("http://localhost:5173"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
