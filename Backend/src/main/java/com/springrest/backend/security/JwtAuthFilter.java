@@ -17,7 +17,7 @@ import java.util.Collections;
 
 @Component
 @RequiredArgsConstructor
-public class JwtAuthFilter extends OncePerRequestFilter {
+public class JwtAuthFilter extends OncePerRequestFilter {// jwt filter for http/https
 
     private final JwtTokenProvider jwtTokenProvider;
 
@@ -27,6 +27,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
+        System.out.println("Auth header is: " + authHeader);
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);

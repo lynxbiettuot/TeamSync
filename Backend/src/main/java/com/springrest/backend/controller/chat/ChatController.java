@@ -13,7 +13,6 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
@@ -29,10 +28,15 @@ public class ChatController {
     private final ConversationRepository conversationRepository;
 
     @MessageMapping("/chat.send")
-    @Transactional
     public void sendMessage(@Payload ChatMessageRequest request, Principal principal) {
         try {
+            if (principal == null) {
+                System.out.println("[WS] principal = null → JwtChannelInterceptor chưa xác thực token");
+                return;
+            }
+
             Integer senderId = Integer.parseInt(principal.getName());
+            System.out.println("[WS] sendMessage từ userId: " + senderId + ", request: " + request);
 
             Message newMessage = new Message();
 
@@ -68,7 +72,11 @@ public class ChatController {
                     "/queue/messages",
                     response
             );
-        }catch (Exception e){
+
+        } catch (Exception e) {
+            System.out.println("[WS] Lỗi sendMessage: " + e.getMessage());
+            e.printStackTrace();
+
             if (principal != null) {
                 Map<String, String> errorResponse = new HashMap<>();
                 errorResponse.put("error", "Cannot send message: " + e.getMessage());

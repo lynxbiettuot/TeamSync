@@ -25,7 +25,7 @@ export function useChatWebSocket({ onMessageReceived }: UseChatWebSocketProps) {
     const client = new Client({
       // Dùng SockJS làm webSocketFactory để tương thích cấu hình Spring Boot withSockJS()
       webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
-      connectHeaders: {
+      connectHeaders: {//STOM frame connect
         Authorization: token ? `Bearer ${token}` : '',
       },
       reconnectDelay: 5000,
@@ -54,7 +54,7 @@ export function useChatWebSocket({ onMessageReceived }: UseChatWebSocketProps) {
       },
     });
 
-    client.activate();
+    client.activate();// kích hoạt gửi frame connect lên server
     stompClientRef.current = client;
 
     return () => {
