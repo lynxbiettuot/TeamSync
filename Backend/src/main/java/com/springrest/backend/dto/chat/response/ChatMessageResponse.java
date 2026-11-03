@@ -15,6 +15,6 @@ public class ChatMessageResponse {
     private Integer conversationId;
     private Integer senderId;
     private String content;
-    private MessageType mesageType;
-    private LocalDateTime timestamp;
+    private MessageType messageType;
+    private LocalDateTime createdAt;
 }
