@@ -12,7 +12,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @Configuration
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
-public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {//handle STOMP frame and routing STOP frame
 
     private final JwtChannelInterceptor jwtChannelInterceptor;
 
@@ -30,8 +30,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        // Đăng ký JwtChannelInterceptor vào kênh nhận message từ client
-        // → Mọi frame STOMP từ frontend đều đi qua đây trước khi vào ChatController
-        registration.interceptors(jwtChannelInterceptor);
+        registration.interceptors(jwtChannelInterceptor);// chạy từ trái qua phải và trên xống dưới
     }
 }

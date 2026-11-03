@@ -29,9 +29,10 @@ public class ChatController {
 
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload ChatMessageRequest request, Principal principal) {
+        //ChatMessageReques đối tượng gửi từ client, từ stompClient -. jackson -> đổi sang ChatMessageReques
         try {
             if (principal == null) {
-                System.out.println("[WS] principal = null → JwtChannelInterceptor chưa xác thực token");
+                System.out.println("JWT Token is not verified");
                 return;
             }
 

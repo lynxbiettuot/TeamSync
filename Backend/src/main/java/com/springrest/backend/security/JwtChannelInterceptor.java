@@ -42,7 +42,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {// interceptor
                     Integer userId = claims.get("userId", Integer.class);
 
                     if (userId != null) {
-                        // Tạo Principal với userId → gắn vào session WebSocket
+                        // Tạo Principal với userId → gắn vào session WebSocket(taoj Object Principal)
                         UsernamePasswordAuthenticationToken authentication =
                                 new UsernamePasswordAuthenticationToken(
                                         String.valueOf(userId),

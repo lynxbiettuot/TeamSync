@@ -1,6 +1,7 @@
 package com.springrest.backend.service.chat;
 
 import com.springrest.backend.entity.Conversation;
+import com.springrest.backend.entity.Enum.ConversationType;
 import com.springrest.backend.entity.Participant;
 import com.springrest.backend.entity.User;
 import com.springrest.backend.repository.ConversationRepository;
@@ -21,7 +22,7 @@ public class ConversationService {
     private final UserRepository userRepository;
 
     @Transactional
-    public Integer getOrCreateDirectConversation(Integer currentUserId, Integer targetUserId) {
+    public Integer getOrCreateDirectConversation(Integer currentUserId, Integer targetUserId) {// chat 1-1
         if (!userRepository.existsById(targetUserId)) {
             throw new IllegalArgumentException("User does not exist");
         }
@@ -32,9 +33,12 @@ public class ConversationService {
             return currentConversation.get();
         }
 
+        //if don't have any conversation. create new
         Conversation newConversation = new Conversation();
+        newConversation.setConversationType(ConversationType.INDIVIDUAL);// mark conversation as 1-1
         newConversation = conversionRepository.save(newConversation);
 
+        //create participant
         User currentUser = userRepository.getReferenceById(currentUserId);
         Participant p1 = new Participant();
         p1.setConversation(newConversation);
