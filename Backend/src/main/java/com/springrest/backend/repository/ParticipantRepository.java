@@ -20,4 +20,7 @@ public interface ParticipantRepository extends JpaRepository<Participant, Intege
     @Query(value="SELECT p.user FROM participant p " +
         "WHERE p.conversation = :conversationId ",nativeQuery = true)
     List<Integer> findMembersJoinConversation(@Param("conversationId") Integer conversationId);
+
+    //find participants in conversation
+    List<Participant> findByConversationId(Integer conversationId);
 }

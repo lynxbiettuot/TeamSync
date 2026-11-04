@@ -4,6 +4,7 @@ import com.springrest.backend.dto.chat.response.ChatMessageResponse;
 import com.springrest.backend.entity.Message;
 import com.springrest.backend.repository.MessageRepository;
 import com.springrest.backend.repository.ParticipantRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,7 @@ public class MessageService {
     private  final MessageRepository messageRepository;
     private final ParticipantRepository participantRepository;
 
+    @Transactional
     public List<ChatMessageResponse> getMessagesByConversationId(Integer conversationId) {
         List<Message> listMessage = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
 
