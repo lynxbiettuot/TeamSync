@@ -1,6 +1,6 @@
 // src/components/chat/MessageList.tsx
 import React, { type UIEvent } from 'react';
-import type { Message } from '../../types/chat.types';
+import type { Message, ReactType } from '../../types/chat.types';
 import { MessageItem } from './MessageItem';
 
 interface MessageListProps {
@@ -12,6 +12,7 @@ interface MessageListProps {
   chatContainerRef: React.RefObject<HTMLDivElement | null>;
   onScrollToTop: () => void;
   onReplyMessage?: (message: Message) => void;
+  onReactMessage?: (messageId: number, reactType: ReactType) => void;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -23,6 +24,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   chatContainerRef,
   onScrollToTop,
   onReplyMessage,
+  onReactMessage,
 }) => {
   // Lắng nghe sự kiện scroll để tải thêm khi chạm đỉnh (top)
   const handleScroll = (e: UIEvent<HTMLDivElement>) => {
@@ -126,7 +128,9 @@ export const MessageList: React.FC<MessageListProps> = ({
             key={m.id}
             message={m}
             isMe={Boolean(isMe)}
+            currentUserId={currentUserId}
             onReply={onReplyMessage}
+            onReact={onReactMessage}
           />
         );
       })}

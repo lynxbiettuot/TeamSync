@@ -1,6 +1,7 @@
 package com.springrest.backend.service.chat;
 
 import com.springrest.backend.dto.chat.response.ChatMessageResponse;
+import com.springrest.backend.dto.chat.response.MessageReactionResponse;
 import com.springrest.backend.dto.chat.response.ReplyMessageDTO;
 import com.springrest.backend.entity.Message;
 import com.springrest.backend.repository.MessageRepository;
@@ -41,6 +42,19 @@ public class MessageService {
                 String senderName = parent.getUser() != null ?parent.getUser().getDisplayName() : "Unknown";
                 res.setReplyTo(new ReplyMessageDTO(parent.getId(), parent.getContent(), senderName));
             }
+
+            //react message
+            if(m.getMessageReactions() != null && !m.getMessageReactions().isEmpty()) {
+                List<MessageReactionResponse> listReactions = m.getMessageReactions().stream()
+                        .map(r -> new MessageReactionResponse(
+                                r.getUser().getId(),
+                                r.getUser().getDisplayName(),
+                                r.getUser().getAvatarUrl(),
+                                r.getReactType()
+                        )).toList();
+                res.setReactions(listReactions);
+            }
+
             return res;
         }).toList();
         return listData;

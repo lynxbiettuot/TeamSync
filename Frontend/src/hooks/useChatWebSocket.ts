@@ -3,21 +3,32 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Client, type IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { tokenStorage } from '../services/apiClient';
-import type { Message, SendMessagePayload } from '../types/chat.types';
+import type {
+  Message,
+  SendMessagePayload,
+  SendReactionPayload,
+  ReactionWebSocketEvent,
+} from '../types/chat.types';
 
 interface UseChatWebSocketProps {
   onMessageReceived: (message: Message) => void;
+  onReactionReceived?: (event: ReactionWebSocketEvent) => void;
 }
 
-export function useChatWebSocket({ onMessageReceived }: UseChatWebSocketProps) {
+export function useChatWebSocket({
+  onMessageReceived,
+  onReactionReceived,
+}: UseChatWebSocketProps) {
   const [isConnected, setIsConnected] = useState(false);
   const stompClientRef = useRef<Client | null>(null);
   const onMessageReceivedRef = useRef(onMessageReceived);
+  const onReactionReceivedRef = useRef(onReactionReceived);
 
   // Giữ ref callback mới nhất tránh re-subscribe không cần thiết
   useEffect(() => {
     onMessageReceivedRef.current = onMessageReceived;
-  }, [onMessageReceived]);
+    onReactionReceivedRef.current = onReactionReceived;
+  }, [onMessageReceived, onReactionReceived]);
 
   useEffect(() => {
     const token = tokenStorage.get();
@@ -25,7 +36,8 @@ export function useChatWebSocket({ onMessageReceived }: UseChatWebSocketProps) {
     const client = new Client({
       // Dùng SockJS làm webSocketFactory để tương thích cấu hình Spring Boot withSockJS()
       webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
-      connectHeaders: {//STOM frame connect
+      connectHeaders: {
+        //STOM frame connect
         Authorization: token ? `Bearer ${token}` : '',
       },
       reconnectDelay: 5000,
@@ -37,9 +49,15 @@ export function useChatWebSocket({ onMessageReceived }: UseChatWebSocketProps) {
         // Lắng nghe tin nhắn đến riêng cho user tại /user/queue/messages
         client.subscribe('/user/queue/messages', (stompMessage: IMessage) => {
           try {
-            const parsed: Message = JSON.parse(stompMessage.body);
-            if (onMessageReceivedRef.current) {
-              onMessageReceivedRef.current(parsed);
+            const parsed = JSON.parse(stompMessage.body);
+            if (parsed && parsed.type === 'REACTION') {
+              if (onReactionReceivedRef.current) {
+                onReactionReceivedRef.current(parsed as ReactionWebSocketEvent);
+              }
+            } else {
+              if (onMessageReceivedRef.current) {
+                onMessageReceivedRef.current(parsed as Message);
+              }
             }
           } catch (err) {
             console.error('[WebSocket] Lỗi parse message:', err);
@@ -54,7 +72,7 @@ export function useChatWebSocket({ onMessageReceived }: UseChatWebSocketProps) {
       },
     });
 
-    client.activate();// kích hoạt gửi frame connect lên server
+    client.activate(); // kích hoạt gửi frame connect lên server
     stompClientRef.current = client;
 
     return () => {
@@ -79,9 +97,25 @@ export function useChatWebSocket({ onMessageReceived }: UseChatWebSocketProps) {
     return false;
   }, []);
 
+  /**
+   * Publish reaction tới endpoint /app/chat.react
+   */
+  const sendReaction = useCallback((payload: SendReactionPayload): boolean => {
+    if (stompClientRef.current && stompClientRef.current.connected) {
+      stompClientRef.current.publish({
+        destination: '/app/chat.react',
+        body: JSON.stringify(payload),
+      });
+      return true;
+    }
+    console.warn('[WebSocket] Chưa kết nối, không thể gửi reaction');
+    return false;
+  }, []);
+
   return {
     isConnected,
     sendMessage,
+    sendReaction,
   };
 }
 

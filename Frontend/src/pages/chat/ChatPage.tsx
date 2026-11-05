@@ -8,7 +8,13 @@ import { ChatSidebar } from '../../components/chat/ChatSidebar';
 import { ChatHeader } from '../../components/chat/ChatHeader';
 import { MessageList } from '../../components/chat/MessageList';
 import { MessageInput } from '../../components/chat/MessageInput';
-import type { Conversation, ChatUser, Message, SendMessagePayload } from '../../types/chat.types';
+import type {
+  Conversation,
+  ChatUser,
+  Message,
+  SendMessagePayload,
+  ReactType,
+} from '../../types/chat.types';
 
 export const ChatPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -29,6 +35,7 @@ export const ChatPage: React.FC = () => {
     chatContainerRef,
     loadOlderMessages,
     appendMessage,
+    updateReaction,
   } = useChatMessages({ conversationId: activeConversationId });
 
   // 2. Tải danh sách hội thoại gần đây khi vào trang
@@ -86,8 +93,11 @@ export const ChatPage: React.FC = () => {
   );
 
   // 4. Khởi tạo kết nối STOMP WebSocket
-  const { isConnected, sendMessage } = useChatWebSocket({
+  const { isConnected, sendMessage, sendReaction } = useChatWebSocket({
     onMessageReceived: handleIncomingMessage,
+    onReactionReceived: (event) => {
+      updateReaction(event.messageId, event.reaction);
+    },
   });
 
   // 5. Chọn cuộc hội thoại
@@ -151,6 +161,26 @@ export const ChatPage: React.FC = () => {
     }
   };
 
+  // 7. Gửi reaction qua STOMP (/app/chat.react)
+  const handleReactMessage = (messageId: number, reactType: ReactType) => {
+    if (!activeConversationId) return;
+
+    const currentConv = conversations.find((c) => c.id === activeConversationId);
+    const receiverId = activeChatUser?.id || currentConv?.otherUser?.id;
+
+    if (!receiverId) {
+      console.warn('Không xác định được receiver_id để thả reaction');
+      return;
+    }
+
+    sendReaction({
+      conversationId: activeConversationId,
+      messageId,
+      receiverId,
+      reactType,
+    });
+  };
+
   const activeConv = conversations.find((c) => c.id === activeConversationId);
 
   return (
@@ -170,10 +200,10 @@ export const ChatPage: React.FC = () => {
           height: '60px',
           background: '#FFFFFF',
           borderBottom: '1px solid #E2E8F0',
-          padding: '0 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          padding: '0 24px',
           flexShrink: 0,
         }}
       >
@@ -182,91 +212,85 @@ export const ChatPage: React.FC = () => {
             style={{
               width: '36px',
               height: '36px',
-              borderRadius: '8px',
-              background: '#2563EB',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
               color: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 800,
-              fontSize: '16px',
+              fontSize: '18px',
             }}
           >
-            TS
+            T
           </div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '16px', color: '#1E293B' }}>
-              TeamSync Workspace
-            </div>
-            <div
-              style={{
-                fontSize: '11.5px',
-                color: isConnected ? '#10B981' : '#F59E0B',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-              }}
-            >
-              <span
-                style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: isConnected ? '#10B981' : '#F59E0B',
-                }}
-              />
-              {isConnected ? 'Realtime Connected' : 'Connecting to Chat Server...'}
-            </div>
-          </div>
+          <span style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A' }}>TeamSync</span>
         </div>
 
-        {/* User Info & Logout */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B' }}>
-              {user?.displayName || 'Người dùng'}
-            </div>
-            <div style={{ fontSize: '12px', color: '#64748B' }}>{user?.email}</div>
-          </div>
-          <button
-            onClick={() => logout()}
+          {/* Status Indicator: Trạng thái kết nối WebSocket */}
+          <div
             style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: '1px solid #E2E8F0',
-              background: '#FFFFFF',
-              color: '#EF4444',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontSize: '13.5px',
-              transition: 'background 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '13px',
+              color: isConnected ? '#16A34A' : '#DC2626',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#FEF2F2')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
           >
-            Đăng xuất
-          </button>
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: isConnected ? '#16A34A' : '#DC2626',
+              }}
+            />
+            {isConnected ? 'Đã kết nối' : 'Mất kết nối'}
+          </div>
+
+          {/* User Profile & Logout */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '14px', fontWeight: 500, color: '#334155' }}>
+              {user?.displayName || user?.email}
+            </span>
+            <button
+              onClick={logout}
+              style={{
+                padding: '6px 12px',
+                fontSize: '13px',
+                color: '#64748B',
+                background: '#F1F5F9',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+              }}
+            >
+              Đăng xuất
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Chat Workspace */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Sidebar (Bên trái): Search + Recent conversations */}
+        {/* Left Sidebar: Danh sách chat và tìm kiếm người dùng */}
         <ChatSidebar
           conversations={conversations}
+          isLoading={isLoadingConversations}
           activeConversationId={activeConversationId}
           onSelectConversation={handleSelectConversation}
-          isLoadingConversations={isLoadingConversations}
+          onConversationCreated={fetchConversations}
         />
 
-        {/* Main Chat (Bên phải) */}
+        {/* Right Section: Khung Chat */}
         <main
           style={{
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            background: '#F8FAFC',
-            position: 'relative',
+            background: '#F1F5F9',
+            overflow: 'hidden',
           }}
         >
           {activeConversationId ? (
@@ -287,6 +311,7 @@ export const ChatPage: React.FC = () => {
                 chatContainerRef={chatContainerRef}
                 onScrollToTop={loadOlderMessages}
                 onReplyMessage={setReplyingMessage}
+                onReactMessage={handleReactMessage}
               />
 
               {/* Message Input: Ô nhập tin nhắn và nút Gửi */}
