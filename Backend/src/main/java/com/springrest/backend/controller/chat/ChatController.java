@@ -1,7 +1,9 @@
 package com.springrest.backend.controller.chat;
 
 import com.springrest.backend.dto.chat.request.ChatMessageRequest;
+import com.springrest.backend.dto.chat.request.MessageReactionRequest;
 import com.springrest.backend.dto.chat.response.ChatMessageResponse;
+import com.springrest.backend.dto.chat.response.MessageReactionResponse;
 import com.springrest.backend.dto.chat.response.ReplyMessageDTO;
 import com.springrest.backend.entity.Conversation;
 import com.springrest.backend.entity.Message;
@@ -9,6 +11,7 @@ import com.springrest.backend.entity.User;
 import com.springrest.backend.repository.ConversationRepository;
 import com.springrest.backend.repository.MessageRepository;
 import com.springrest.backend.repository.UserRepository;
+import com.springrest.backend.service.chat.MessageReactionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -18,6 +21,7 @@ import org.springframework.stereotype.Controller;
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -28,6 +32,7 @@ public class ChatController {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final ConversationRepository conversationRepository;
+    private final MessageReactionService messageReactionService;
 
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload ChatMessageRequest request, Principal principal) {
@@ -108,6 +113,43 @@ public class ChatController {
                         errorResponse
                 );
             }
+        }
+    }
+
+    @MessageMapping("/chat.react")
+    public void reactToMessage(@Payload MessageReactionRequest request, Principal principal) {
+        try{
+            if (principal == null) {
+                System.out.println("[WS] JWT Token is not verified");
+                return;
+            }
+
+            Integer senderId = Integer.parseInt(principal.getName());
+
+            MessageReactionResponse reactionResponse = messageReactionService.reactToMessage(senderId, request);
+
+            //create ressponse to FE
+            Map<String,Object> reactionEvent = new LinkedHashMap<>();
+            reactionEvent.put("type","REACTION");
+            reactionEvent.put("conversationId",request.getConversationId());
+            reactionEvent.put("messageId", request.getMessageId());
+            reactionEvent.put("reaction", reactionResponse);
+
+            //send to receiverId via queue
+            messagingTemplate.convertAndSendToUser(// send to receiver
+                    String.valueOf(request.getReceiverId()),
+                    "/queue/messages",
+                    reactionEvent
+            );
+
+            messagingTemplate.convertAndSendToUser( //send to ourside for synchronized
+                    String.valueOf(senderId),
+                    "/queue/messages",
+                    reactionEvent
+            );
+        }catch (Exception e){
+            System.out.println("[WS] Lỗi reactToMessage: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

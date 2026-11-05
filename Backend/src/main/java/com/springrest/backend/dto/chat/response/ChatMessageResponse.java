@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -18,6 +20,7 @@ public class ChatMessageResponse {
     private MessageType messageType;
     private LocalDateTime createdAt;
     private ReplyMessageDTO replyTo;
+    private List<MessageReactionResponse> reactions = new ArrayList<>();// list variable must ussually have to pre-define when use loomlok
 
     public ChatMessageResponse(Integer id,Integer conversationId, Integer senderId, String content, MessageType messageType,LocalDateTime createdAt) {
         this.id = id;
@@ -27,5 +30,6 @@ public class ChatMessageResponse {
         this.messageType = messageType;
         this.createdAt = createdAt;
         this.replyTo = null;
+        this.reactions = new ArrayList<>();
     }
 }

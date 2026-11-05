@@ -57,6 +57,34 @@ export interface Message {
   updated_at?: string;
   replyTo?: ReplyMessage | null;
   reply_to?: ReplyMessage | null;
+  reactions?: MessageReaction[];
+}
+
+/** Loại cảm xúc thả vào tin nhắn */
+export type ReactType = 'LIKE' | 'HAHA' | 'SAD' | 'ANGRY';
+
+/** Đối tượng cảm xúc của một user */
+export interface MessageReaction {
+  userId: number;
+  userName?: string;
+  avatarUrl?: string | null;
+  reactType: ReactType | null;
+}
+
+/** Payload gửi thả cảm xúc qua WebSocket STOMP (/app/chat.react) */
+export interface SendReactionPayload {
+  conversationId: number;
+  messageId: number;
+  receiverId: number;
+  reactType: ReactType;
+}
+
+/** Sự kiện WebSocket khi có thay đổi reaction */
+export interface ReactionWebSocketEvent {
+  type: 'REACTION';
+  conversationId: number;
+  messageId: number;
+  reaction: MessageReaction;
 }
 
 /** Payload gửi qua WebSocket STOMP (/app/chat.send) */

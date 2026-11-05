@@ -1,7 +1,7 @@
 // src/hooks/useChatMessages.ts
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { chatService } from '../services/chatService';
-import type { Message } from '../types/chat.types';
+import type { Message, MessageReaction } from '../types/chat.types';
 
 interface UseChatMessagesProps {
   conversationId: number | null;
@@ -127,6 +127,37 @@ export function useChatMessages({ conversationId }: UseChatMessagesProps) {
     shouldScrollToBottomRef.current = true;
   }, []);
 
+  // Cập nhật reaction của một tin nhắn (từ WebSocket REACTION event)
+  const updateReaction = useCallback((messageId: number, reaction: MessageReaction) => {
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id !== messageId) return msg;
+
+        const currentReactions = msg.reactions || [];
+        let updatedReactions: MessageReaction[];
+
+        if (!reaction.reactType) {
+          // Gỡ bỏ reaction của user này (khi reactType là null)
+          updatedReactions = currentReactions.filter((r) => r.userId !== reaction.userId);
+        } else {
+          // Cập nhật đổi icon hoặc thêm mới
+          const existingIdx = currentReactions.findIndex((r) => r.userId === reaction.userId);
+          if (existingIdx > -1) {
+            updatedReactions = [...currentReactions];
+            updatedReactions[existingIdx] = reaction;
+          } else {
+            updatedReactions = [...currentReactions, reaction];
+          }
+        }
+
+        return {
+          ...msg,
+          reactions: updatedReactions,
+        };
+      })
+    );
+  }, []);
+
   return {
     messages,
     hasMore,
@@ -135,6 +166,7 @@ export function useChatMessages({ conversationId }: UseChatMessagesProps) {
     chatContainerRef,
     loadOlderMessages,
     appendMessage,
+    updateReaction,
   };
 }
 
