@@ -17,4 +17,15 @@ public class ChatMessageResponse {
     private String content;
     private MessageType messageType;
     private LocalDateTime createdAt;
+    private ReplyMessageDTO replyTo;
+
+    public ChatMessageResponse(Integer id,Integer conversationId, Integer senderId, String content, MessageType messageType,LocalDateTime createdAt) {
+        this.id = id;
+        this.conversationId = conversationId;
+        this.senderId = senderId;
+        this.content = content;
+        this.messageType = messageType;
+        this.createdAt = createdAt;
+        this.replyTo = null;
+    }
 }

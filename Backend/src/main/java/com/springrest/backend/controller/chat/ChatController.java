@@ -2,6 +2,7 @@ package com.springrest.backend.controller.chat;
 
 import com.springrest.backend.dto.chat.request.ChatMessageRequest;
 import com.springrest.backend.dto.chat.response.ChatMessageResponse;
+import com.springrest.backend.dto.chat.response.ReplyMessageDTO;
 import com.springrest.backend.entity.Conversation;
 import com.springrest.backend.entity.Message;
 import com.springrest.backend.entity.User;
@@ -18,6 +19,7 @@ import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Controller
 @RequiredArgsConstructor
@@ -51,6 +53,23 @@ public class ChatController {
             newMessage.setMessageType(request.getMessageType());
             newMessage.setCreatedAt(LocalDateTime.now());
 
+            ReplyMessageDTO replyDto = null;
+            //check if user click on reply
+            if(request.getReplyToMessageId() != null) {
+                Optional<Message> parentOpt = messageRepository.findByIdWithUser(request.getReplyToMessageId());
+
+                if(parentOpt.isPresent()) {
+
+                    Message parentMessage = parentOpt.orElse(null);
+
+                    newMessage.setReplyToMessage(parentMessage);
+
+                    String senderName = parentMessage.getUser() != null ? parentMessage.getUser().getDisplayName() : "Unknown";
+
+                    replyDto = new ReplyMessageDTO(parentMessage.getId(),parentMessage.getContent(),senderName);
+                }
+            }
+
             Message savedMessage = messageRepository.save(newMessage);
 
             ChatMessageResponse response = new ChatMessageResponse(
@@ -61,6 +80,7 @@ public class ChatController {
                     request.getMessageType(),
                     savedMessage.getCreatedAt()
             );
+            response.setReplyTo(replyDto);
 
             messagingTemplate.convertAndSendToUser(
                     String.valueOf(request.getReceiverId()),
