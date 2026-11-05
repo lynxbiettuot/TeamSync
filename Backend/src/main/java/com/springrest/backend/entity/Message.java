@@ -55,4 +55,9 @@ public class Message {
     //map to message reaction
     @OneToMany(mappedBy = "message",cascade = CascadeType.ALL,orphanRemoval = true)
     private List<MessageReaction> messageReactions = new ArrayList<>();
+
+    //map itself to reply
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reply_to_message_id", foreignKey = @ForeignKey(name = "FK_MESSAGE_REPLY_TO"))
+    private Message replyToMessage;
 }

@@ -1,6 +1,7 @@
 package com.springrest.backend.service.chat;
 
 import com.springrest.backend.dto.chat.response.ChatMessageResponse;
+import com.springrest.backend.dto.chat.response.ReplyMessageDTO;
 import com.springrest.backend.entity.Message;
 import com.springrest.backend.repository.MessageRepository;
 import com.springrest.backend.repository.ParticipantRepository;
@@ -25,14 +26,23 @@ public class MessageService {
             return new ArrayList<ChatMessageResponse>();
         }
 
-        List<ChatMessageResponse> listData= listMessage.stream().map(m -> new ChatMessageResponse(
+        List<ChatMessageResponse> listData= listMessage.stream().map(m -> {
+            ChatMessageResponse res = new ChatMessageResponse(
                 m.getId(),
                 m.getConversation().getId(),
                 m.getUser().getId(),
                 m.getContent(),
                 m.getMessageType(),
                 m.getCreatedAt()
-        )).toList();
+        );
+            //get reply message if exist
+            if(m.getReplyToMessage() != null) {
+                Message parent = m.getReplyToMessage();
+                String senderName = parent.getUser() != null ?parent.getUser().getDisplayName() : "Unknown";
+                res.setReplyTo(new ReplyMessageDTO(parent.getId(), parent.getContent(), senderName));
+            }
+            return res;
+        }).toList();
         return listData;
     }
 

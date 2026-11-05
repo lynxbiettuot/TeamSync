@@ -11,6 +11,7 @@ interface MessageListProps {
   isLoadingMore: boolean;
   chatContainerRef: React.RefObject<HTMLDivElement | null>;
   onScrollToTop: () => void;
+  onReplyMessage?: (message: Message) => void;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -21,6 +22,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   isLoadingMore,
   chatContainerRef,
   onScrollToTop,
+  onReplyMessage,
 }) => {
   // Lắng nghe sự kiện scroll để tải thêm khi chạm đỉnh (top)
   const handleScroll = (e: UIEvent<HTMLDivElement>) => {
@@ -119,7 +121,14 @@ export const MessageList: React.FC<MessageListProps> = ({
           (m.senderId === currentUserId ||
             m.sender_id === currentUserId ||
             m.user?.id === currentUserId);
-        return <MessageItem key={m.id} message={m} isMe={Boolean(isMe)} />;
+        return (
+          <MessageItem
+            key={m.id}
+            message={m}
+            isMe={Boolean(isMe)}
+            onReply={onReplyMessage}
+          />
+        );
       })}
     </div>
   );

@@ -30,6 +30,14 @@ export interface Conversation {
   unreadCount?: number;
 }
 
+/** Thông tin trích dẫn khi phản hồi tin nhắn */
+export interface ReplyMessage {
+  id: number;
+  content: string;
+  senderName?: string;
+  sender_name?: string;
+}
+
 /** Đối tượng Tin nhắn */
 export interface Message {
   id: number;
@@ -47,6 +55,8 @@ export interface Message {
   created_at?: string;
   updatedAt?: string;
   updated_at?: string;
+  replyTo?: ReplyMessage | null;
+  reply_to?: ReplyMessage | null;
 }
 
 /** Payload gửi qua WebSocket STOMP (/app/chat.send) */
@@ -55,6 +65,8 @@ export interface SendMessagePayload {
   receiver_id: number;
   content: string;
   message_type: 'TEXT';
+  reply_to_message_id?: number | null;
+  replyToMessageId?: number | null;
 }
 
 /** Response phân trang Cursor-based từ GET /api/messages/{conversationId} */

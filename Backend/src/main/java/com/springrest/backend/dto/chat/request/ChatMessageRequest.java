@@ -25,4 +25,8 @@ public class ChatMessageRequest {
     @JsonProperty("messageType")
     @JsonAlias({"message_type", "messageType"})
     private MessageType messageType;
+
+    @JsonProperty("replyToMessageId")
+    @JsonAlias({"reply_to_message_id", "replyToMessageId"})
+    private Integer replyToMessageId;
 }

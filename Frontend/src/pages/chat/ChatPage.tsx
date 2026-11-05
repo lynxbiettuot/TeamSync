@@ -8,7 +8,7 @@ import { ChatSidebar } from '../../components/chat/ChatSidebar';
 import { ChatHeader } from '../../components/chat/ChatHeader';
 import { MessageList } from '../../components/chat/MessageList';
 import { MessageInput } from '../../components/chat/MessageInput';
-import type { Conversation, ChatUser, Message } from '../../types/chat.types';
+import type { Conversation, ChatUser, Message, SendMessagePayload } from '../../types/chat.types';
 
 export const ChatPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -18,6 +18,7 @@ export const ChatPage: React.FC = () => {
   const [isLoadingConversations, setIsLoadingConversations] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [activeChatUser, setActiveChatUser] = useState<ChatUser | null>(null);
+  const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
 
   // 1. Quản lý tin nhắn & Cursor-based Pagination
   const {
@@ -92,6 +93,7 @@ export const ChatPage: React.FC = () => {
   // 5. Chọn cuộc hội thoại
   const handleSelectConversation = (conversationId: number, otherUser?: ChatUser) => {
     setActiveConversationId(conversationId);
+    setReplyingMessage(null); // Đổi cuộc trò chuyện thì xóa trạng thái reply đang chờ
     if (otherUser) {
       setActiveChatUser(otherUser);
     } else {
@@ -113,16 +115,21 @@ export const ChatPage: React.FC = () => {
       return;
     }
 
-    const payload = {
+    const payload: SendMessagePayload = {
       conversation_id: activeConversationId,
       receiver_id: receiverId,
       content,
-      message_type: 'TEXT' as const,
+      message_type: 'TEXT',
+      reply_to_message_id: replyingMessage ? replyingMessage.id : null,
+      replyToMessageId: replyingMessage ? replyingMessage.id : null,
     };
 
     const sent = sendMessage(payload);
 
     if (sent) {
+      // Sau khi gửi thành công, reset trạng thái reply
+      setReplyingMessage(null);
+
       // Cập nhật tin nhắn lên đầu sidebar ngay lập tức
       const now = new Date().toISOString();
       setConversations((prev) => {
@@ -279,12 +286,15 @@ export const ChatPage: React.FC = () => {
                 isLoadingMore={isLoadingMore}
                 chatContainerRef={chatContainerRef}
                 onScrollToTop={loadOlderMessages}
+                onReplyMessage={setReplyingMessage}
               />
 
               {/* Message Input: Ô nhập tin nhắn và nút Gửi */}
               <MessageInput
                 onSendMessage={handleSendMessage}
                 disabled={!isConnected && false} // Vẫn cho phép gõ tin nhắn
+                replyingMessage={replyingMessage}
+                onCancelReply={() => setReplyingMessage(null)}
               />
             </>
           ) : (
