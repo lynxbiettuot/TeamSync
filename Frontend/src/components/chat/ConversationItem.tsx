@@ -7,12 +7,14 @@ interface ConversationItemProps {
   isActive: boolean;
   onClick: () => void;
   currentUserId?: number;
+  isOnline?: boolean;
 }
 
 export const ConversationItem: React.FC<ConversationItemProps> = ({
   conversation,
   isActive,
   onClick,
+  isOnline = false,
 }) => {
   // Ưu tiên tên của đối phương (nếu có otherUser) hoặc tên nhóm
   const displayName =
@@ -53,7 +55,7 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
         if (!isActive) e.currentTarget.style.background = 'transparent';
       }}
     >
-      {/* Avatar */}
+      {/* Avatar với Chấm Xanh Online */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
         {avatar ? (
           <img
@@ -78,6 +80,24 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
           >
             {initial}
           </div>
+        )}
+
+        {/* Chấm tròn xanh báo Online */}
+        {isOnline && (
+          <span
+            title="Đang hoạt động"
+            style={{
+              position: 'absolute',
+              bottom: '1px',
+              right: '1px',
+              width: '11px',
+              height: '11px',
+              borderRadius: '50%',
+              background: '#22C55E',
+              border: '2px solid #FFFFFF',
+              boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.05)',
+            }}
+          />
         )}
       </div>
 

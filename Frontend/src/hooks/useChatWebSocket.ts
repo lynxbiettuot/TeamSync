@@ -8,27 +8,32 @@ import type {
   SendMessagePayload,
   SendReactionPayload,
   ReactionWebSocketEvent,
+  UserPresenceEvent,
 } from '../types/chat.types';
 
 interface UseChatWebSocketProps {
   onMessageReceived: (message: Message) => void;
   onReactionReceived?: (event: ReactionWebSocketEvent) => void;
+  onPresenceReceived?: (event: UserPresenceEvent) => void;
 }
 
 export function useChatWebSocket({
   onMessageReceived,
   onReactionReceived,
+  onPresenceReceived,
 }: UseChatWebSocketProps) {
   const [isConnected, setIsConnected] = useState(false);
   const stompClientRef = useRef<Client | null>(null);
   const onMessageReceivedRef = useRef(onMessageReceived);
   const onReactionReceivedRef = useRef(onReactionReceived);
+  const onPresenceReceivedRef = useRef(onPresenceReceived);
 
   // Giữ ref callback mới nhất tránh re-subscribe không cần thiết
   useEffect(() => {
     onMessageReceivedRef.current = onMessageReceived;
     onReactionReceivedRef.current = onReactionReceived;
-  }, [onMessageReceived, onReactionReceived]);
+    onPresenceReceivedRef.current = onPresenceReceived;
+  }, [onMessageReceived, onReactionReceived, onPresenceReceived]);
 
   useEffect(() => {
     const token = tokenStorage.get();
@@ -46,7 +51,7 @@ export function useChatWebSocket({
       onConnect: () => {
         setIsConnected(true);
 
-        // Lắng nghe tin nhắn đến riêng cho user tại /user/queue/messages
+        // 1. Lắng nghe tin nhắn đến riêng cho user tại /user/queue/messages
         client.subscribe('/user/queue/messages', (stompMessage: IMessage) => {
           try {
             const parsed = JSON.parse(stompMessage.body);
@@ -61,6 +66,18 @@ export function useChatWebSocket({
             }
           } catch (err) {
             console.error('[WebSocket] Lỗi parse message:', err);
+          }
+        });
+
+        // 2. Lắng nghe trạng thái Online / Offline từ kênh chung /topic/presence
+        client.subscribe('/topic/presence', (stompMessage: IMessage) => {
+          try {
+            const parsed = JSON.parse(stompMessage.body) as UserPresenceEvent;
+            if (onPresenceReceivedRef.current && parsed && parsed.userId) {
+              onPresenceReceivedRef.current(parsed);
+            }
+          } catch (err) {
+            console.error('[WebSocket] Lỗi parse presence event:', err);
           }
         });
       },

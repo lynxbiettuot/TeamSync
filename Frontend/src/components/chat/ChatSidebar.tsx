@@ -9,6 +9,7 @@ interface ChatSidebarProps {
   activeConversationId: number | null;
   onSelectConversation: (conversationId: number, user?: ChatUser) => void;
   isLoadingConversations?: boolean;
+  onlineUserIds?: Set<number>;
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -16,6 +17,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   activeConversationId,
   onSelectConversation,
   isLoadingConversations = false,
+  onlineUserIds = new Set(),
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ChatUser[]>([]);
@@ -99,60 +101,30 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               background: '#F8FAFC',
               fontSize: '13.5px',
               outline: 'none',
+              transition: 'border-color 0.2s',
               boxSizing: 'border-box',
-              color: '#1E293B',
             }}
+            onFocus={(e) => (e.target.style.borderColor = '#2563EB')}
+            onBlur={(e) => (e.target.style.borderColor = '#E2E8F0')}
           />
-          {/* Search Icon */}
-          <svg
+          {/* Icon kính lúp */}
+          <span
             style={{
               position: 'absolute',
-              left: '11px',
+              left: '12px',
               top: '50%',
               transform: 'translateY(-50%)',
               color: '#94A3B8',
+              fontSize: '14px',
               pointerEvents: 'none',
             }}
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
           >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-
-          {/* Clear button */}
-          {searchQuery && (
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setSearchResults([]);
-              }}
-              style={{
-                position: 'absolute',
-                right: '8px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                color: '#94A3B8',
-                cursor: 'pointer',
-                fontSize: '14px',
-                padding: '4px',
-              }}
-            >
-              ✕
-            </button>
-          )}
+            🔍
+          </span>
         </div>
 
         {/* Dropdown danh sách kết quả tìm kiếm */}
-        {searchQuery.trim().length > 0 && (
+        {searchQuery.trim() && (
           <div
             style={{
               position: 'absolute',
@@ -161,91 +133,112 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               right: '16px',
               background: '#FFFFFF',
               borderRadius: '8px',
-              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
               border: '1px solid #E2E8F0',
               maxHeight: '260px',
               overflowY: 'auto',
-              zIndex: 50,
+              zIndex: 30,
               padding: '6px',
             }}
           >
             {isSearching ? (
-              <div style={{ padding: '12px', textAlign: 'center', fontSize: '13px', color: '#64748B' }}>
+              <div style={{ padding: '12px', textAlign: 'center', color: '#94A3B8', fontSize: '13px' }}>
                 Đang tìm kiếm...
               </div>
             ) : searchResults.length === 0 ? (
-              <div style={{ padding: '12px', textAlign: 'center', fontSize: '13px', color: '#64748B' }}>
-                Không tìm thấy người dùng phù hợp
+              <div style={{ padding: '12px', textAlign: 'center', color: '#94A3B8', fontSize: '13px' }}>
+                Không tìm thấy người dùng
               </div>
             ) : (
-              searchResults.map((u) => (
-                <div
-                  key={u.id}
-                  onClick={() => !isCreatingDirect && handleSelectUserFromSearch(u)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '8px 10px',
-                    borderRadius: '6px',
-                    cursor: isCreatingDirect ? 'wait' : 'pointer',
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#F1F5F9')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
+              searchResults.map((u) => {
+                const isUserOnline = onlineUserIds.has(u.id);
+
+                return (
                   <div
+                    key={u.id}
+                    onClick={() => handleSelectUserFromSearch(u)}
                     style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      background: '#DBEAFE',
-                      color: '#1D4ED8',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 600,
-                      fontSize: '13px',
-                      flexShrink: 0,
+                      gap: '10px',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      cursor: isCreatingDirect ? 'wait' : 'pointer',
+                      transition: 'background 0.15s',
                     }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#F1F5F9')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
-                    {u.avatarUrl ? (
-                      <img
-                        src={u.avatarUrl}
-                        alt={u.displayName}
-                        style={{ width: '100%', height: '100%', borderRadius: '50%' }}
-                      />
-                    ) : (
-                      u.displayName?.charAt(0).toUpperCase() || 'U'
-                    )}
-                  </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
                     <div
                       style={{
-                        fontSize: '13.5px',
+                        position: 'relative',
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: '#DBEAFE',
+                        color: '#1D4ED8',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         fontWeight: 600,
-                        color: '#1E293B',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        fontSize: '13px',
+                        flexShrink: 0,
                       }}
                     >
-                      {u.displayName}
+                      {u.avatarUrl ? (
+                        <img
+                          src={u.avatarUrl}
+                          alt={u.displayName}
+                          style={{ width: '100%', height: '100%', borderRadius: '50%' }}
+                        />
+                      ) : (
+                        u.displayName?.charAt(0).toUpperCase() || 'U'
+                      )}
+
+                      {/* Chấm tròn xanh nếu đang Online */}
+                      {isUserOnline && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            right: 0,
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: '#22C55E',
+                            border: '1.5px solid #FFFFFF',
+                          }}
+                        />
+                      )}
                     </div>
-                    <div
-                      style={{
-                        fontSize: '11.5px',
-                        color: '#64748B',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {u.email}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          fontSize: '13.5px',
+                          fontWeight: 600,
+                          color: '#1E293B',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {u.displayName}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '11.5px',
+                          color: '#64748B',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {u.email}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
@@ -285,14 +278,20 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             No conversation available
           </div>
         ) : (
-          sortedConversations.map((conv) => (
-            <ConversationItem
-              key={conv.id}
-              conversation={conv}
-              isActive={conv.id === activeConversationId}
-              onClick={() => onSelectConversation(conv.id, conv.otherUser)}
-            />
-          ))
+          sortedConversations.map((conv) => {
+            const otherUserId = conv.otherUser?.id;
+            const isOnline = otherUserId !== undefined && onlineUserIds.has(otherUserId);
+
+            return (
+              <ConversationItem
+                key={conv.id}
+                conversation={conv}
+                isActive={conv.id === activeConversationId}
+                isOnline={isOnline}
+                onClick={() => onSelectConversation(conv.id, conv.otherUser)}
+              />
+            );
+          })
         )}
       </div>
     </aside>

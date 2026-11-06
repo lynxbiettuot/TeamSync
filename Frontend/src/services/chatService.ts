@@ -99,6 +99,24 @@ export const chatService = {
 
     return { data: [], hasMore: false };
   },
+
+  /**
+   * Lấy danh sách ID các user đang online ban đầu từ Redis
+   * GET /api/presence/online
+   */
+  async getOnlineUsers(): Promise<number[]> {
+    try {
+      const res = await apiClient.get<unknown>('/api/presence/online');
+      const data = extractData<number[]>(res);
+      if (Array.isArray(data)) {
+        return data.map(Number);
+      }
+      return [];
+    } catch (err) {
+      console.error('Lỗi khi lấy danh sách user online:', err);
+      return [];
+    }
+  },
 };
 
 export default chatService;
