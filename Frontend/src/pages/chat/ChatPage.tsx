@@ -25,6 +25,7 @@ export const ChatPage: React.FC = () => {
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [activeChatUser, setActiveChatUser] = useState<ChatUser | null>(null);
   const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
 
   // 1. Quản lý tin nhắn & Cursor-based Pagination
   const {
@@ -38,7 +39,7 @@ export const ChatPage: React.FC = () => {
     updateReaction,
   } = useChatMessages({ conversationId: activeConversationId });
 
-  // 2. Tải danh sách hội thoại gần đây khi vào trang
+  // 2. Tải danh sách hội thoại gần đây & danh sách Online ban đầu khi vào trang
   const fetchConversations = useCallback(async () => {
     setIsLoadingConversations(true);
     try {
@@ -54,6 +55,13 @@ export const ChatPage: React.FC = () => {
 
   useEffect(() => {
     fetchConversations();
+
+    // Lấy danh sách các userId đang Online ban đầu từ Redis
+    chatService.getOnlineUsers().then((ids) => {
+      if (ids && ids.length > 0) {
+        setOnlineUserIds(new Set(ids));
+      }
+    });
   }, [fetchConversations]);
 
   // 3. Xử lý khi có tin nhắn mới từ WebSocket STOMP (/user/queue/messages)
@@ -92,11 +100,22 @@ export const ChatPage: React.FC = () => {
     [activeConversationId, appendMessage, fetchConversations]
   );
 
-  // 4. Khởi tạo kết nối STOMP WebSocket
+  // 4. Khởi tạo kết nối STOMP WebSocket (Nghe cả tin nhắn, reaction và online/offline presence)
   const { isConnected, sendMessage, sendReaction } = useChatWebSocket({
     onMessageReceived: handleIncomingMessage,
     onReactionReceived: (event) => {
       updateReaction(event.messageId, event.reaction);
+    },
+    onPresenceReceived: (event) => {
+      setOnlineUserIds((prev) => {
+        const next = new Set(prev);
+        if (event.status === 'ONLINE') {
+          next.add(event.userId);
+        } else {
+          next.delete(event.userId);
+        }
+        return next;
+      });
     },
   });
 
@@ -182,6 +201,8 @@ export const ChatPage: React.FC = () => {
   };
 
   const activeConv = conversations.find((c) => c.id === activeConversationId);
+  const otherChatUserId = activeChatUser?.id || activeConv?.otherUser?.id;
+  const isChatUserOnline = otherChatUserId !== undefined && onlineUserIds.has(otherChatUserId);
 
   return (
     <div
@@ -228,7 +249,7 @@ export const ChatPage: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {/* Status Indicator: Trạng thái kết nối WebSocket */}
+          {/* Status Indicator: Trạng thái kết nối WebSocket của chính mình */}
           <div
             style={{
               display: 'flex',
@@ -274,13 +295,13 @@ export const ChatPage: React.FC = () => {
 
       {/* Main Chat Workspace */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Left Sidebar: Danh sách chat và tìm kiếm người dùng */}
+        {/* Left Sidebar: Danh sách chat và tìm kiếm người dùng (có chấm xanh online) */}
         <ChatSidebar
           conversations={conversations}
           isLoading={isLoadingConversations}
           activeConversationId={activeConversationId}
           onSelectConversation={handleSelectConversation}
-          onConversationCreated={fetchConversations}
+          onlineUserIds={onlineUserIds}
         />
 
         {/* Right Section: Khung Chat */}
@@ -295,10 +316,11 @@ export const ChatPage: React.FC = () => {
         >
           {activeConversationId ? (
             <>
-              {/* Header: Tên và Avatar người đang chat */}
+              {/* Header: Tên và Avatar người đang chat với chấm xanh & chữ "Đang hoạt động" */}
               <ChatHeader
                 user={activeChatUser || activeConv?.otherUser}
                 conversationName={activeConv?.name}
+                isOnline={isChatUserOnline}
               />
 
               {/* Message List: Khung hiển thị tin nhắn (có scroll, cursor-based pagination) */}

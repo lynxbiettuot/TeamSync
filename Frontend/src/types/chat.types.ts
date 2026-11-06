@@ -87,6 +87,12 @@ export interface ReactionWebSocketEvent {
   reaction: MessageReaction;
 }
 
+/** Sự kiện WebSocket khi có thay đổi trạng thái Online / Offline (/topic/presence) */
+export interface UserPresenceEvent {
+  userId: number;
+  status: 'ONLINE' | 'OFFLINE';
+}
+
 /** Payload gửi qua WebSocket STOMP (/app/chat.send) */
 export interface SendMessagePayload {
   conversation_id: number;
