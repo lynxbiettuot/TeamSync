@@ -9,31 +9,36 @@ import type {
   SendReactionPayload,
   ReactionWebSocketEvent,
   UserPresenceEvent,
+  NotificationItem,
 } from '../types/chat.types';
 
 interface UseChatWebSocketProps {
   onMessageReceived: (message: Message) => void;
   onReactionReceived?: (event: ReactionWebSocketEvent) => void;
   onPresenceReceived?: (event: UserPresenceEvent) => void;
+  onNotificationReceived?: (notification: NotificationItem) => void;
 }
 
 export function useChatWebSocket({
   onMessageReceived,
   onReactionReceived,
   onPresenceReceived,
+  onNotificationReceived,
 }: UseChatWebSocketProps) {
   const [isConnected, setIsConnected] = useState(false);
   const stompClientRef = useRef<Client | null>(null);
   const onMessageReceivedRef = useRef(onMessageReceived);
   const onReactionReceivedRef = useRef(onReactionReceived);
   const onPresenceReceivedRef = useRef(onPresenceReceived);
+  const onNotificationReceivedRef = useRef(onNotificationReceived);
 
   // Giữ ref callback mới nhất tránh re-subscribe không cần thiết
   useEffect(() => {
     onMessageReceivedRef.current = onMessageReceived;
     onReactionReceivedRef.current = onReactionReceived;
     onPresenceReceivedRef.current = onPresenceReceived;
-  }, [onMessageReceived, onReactionReceived, onPresenceReceived]);
+    onNotificationReceivedRef.current = onNotificationReceived;
+  }, [onMessageReceived, onReactionReceived, onPresenceReceived, onNotificationReceived]);
 
   useEffect(() => {
     const token = tokenStorage.get();
@@ -78,6 +83,30 @@ export function useChatWebSocket({
             }
           } catch (err) {
             console.error('[WebSocket] Lỗi parse presence event:', err);
+          }
+        });
+
+        // 3. Lắng nghe thông báo realtime từ RabbitMQ Consumer tại /user/queue/notifications
+        client.subscribe('/user/queue/notifications', (stompMessage: IMessage) => {
+          try {
+            const raw = JSON.parse(stompMessage.body) as Record<string, unknown>;
+            if (onNotificationReceivedRef.current && raw && raw.id) {
+              const notification: NotificationItem = {
+                id: Number(raw.id),
+                notificationType:
+                  (raw.notificationType as NotificationItem['notificationType']) || 'MESSAGE',
+                content: String(raw.content ?? ''),
+                referenceId:
+                  raw.referenceId !== undefined && raw.referenceId !== null
+                    ? Number(raw.referenceId)
+                    : null,
+                isRead: Boolean(raw.isRead ?? raw.read),
+                createdAt: String(raw.createdAt ?? ''),
+              };
+              onNotificationReceivedRef.current(notification);
+            }
+          } catch (err) {
+            console.error('[WebSocket] Lỗi parse notification event:', err);
           }
         });
       },

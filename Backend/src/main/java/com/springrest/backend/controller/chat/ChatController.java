@@ -5,13 +5,16 @@ import com.springrest.backend.dto.chat.request.MessageReactionRequest;
 import com.springrest.backend.dto.chat.response.ChatMessageResponse;
 import com.springrest.backend.dto.chat.response.MessageReactionResponse;
 import com.springrest.backend.dto.chat.response.ReplyMessageDTO;
+import com.springrest.backend.dto.notification.NotificationEvent;
 import com.springrest.backend.entity.Conversation;
+import com.springrest.backend.entity.Enum.NotificationType;
 import com.springrest.backend.entity.Message;
 import com.springrest.backend.entity.User;
 import com.springrest.backend.repository.ConversationRepository;
 import com.springrest.backend.repository.MessageRepository;
 import com.springrest.backend.repository.UserRepository;
 import com.springrest.backend.service.chat.MessageReactionService;
+import com.springrest.backend.service.notification.NotificationProducer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -33,6 +36,7 @@ public class ChatController {
     private final UserRepository userRepository;
     private final ConversationRepository conversationRepository;
     private final MessageReactionService messageReactionService;
+    private final NotificationProducer notificationProducer;
 
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload ChatMessageRequest request, Principal principal) {
@@ -98,6 +102,19 @@ public class ChatController {
                     "/queue/messages",
                     response
             );
+
+            //notification
+            // push notification event and prevent myself notification
+            if (request.getReceiverId() != null && !senderId.equals(request.getReceiverId())) {
+                NotificationEvent notificationEvent = new NotificationEvent(
+                        senderId,
+                        request.getReceiverId(),
+                        NotificationType.MESSAGE,
+                        savedMessage.getContent(),
+                        savedMessage.getConversation().getId()
+                );
+                notificationProducer.sendNotificationEvent(notificationEvent);
+            }
 
         } catch (Exception e) {
             System.out.println("[WS] Lỗi sendMessage: " + e.getMessage());

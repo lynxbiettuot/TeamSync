@@ -93,6 +93,25 @@ export interface UserPresenceEvent {
   status: 'ONLINE' | 'OFFLINE';
 }
 
+/** Loại thông báo từ Backend (khớp NotificationType enum) */
+export type NotificationType = 'MESSAGE' | 'CALL' | 'MENTION';
+
+/** Đối tượng Thông báo từ REST /api/notifications và WebSocket /user/queue/notifications */
+export interface NotificationItem {
+  id: number;
+  notificationType: NotificationType;
+  content: string;
+  referenceId: number | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+/** Response từ GET /api/notifications */
+export interface NotificationListResponse {
+  notifications: NotificationItem[];
+  unreadCount: number;
+}
+
 /** Payload gửi qua WebSocket STOMP (/app/chat.send) */
 export interface SendMessagePayload {
   conversation_id: number;
