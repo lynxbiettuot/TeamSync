@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 import java.util.Optional;
 
-public interface ParticipantRepository extends JpaRepository<Participant, Integer> {
+public interface ParticipantRepository extends JpaRepository<Participant, Integer> {// query on JpaRepository table
 
 
     @Query(value="SELECT p1.conversation FROM participant p1 " +

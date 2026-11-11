@@ -2,18 +2,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { chatService } from '../../services/chatService';
+import { notificationService } from '../../services/notificationService';
 import { useChatMessages } from '../../hooks/useChatMessages';
 import { useChatWebSocket } from '../../hooks/useChatWebSocket';
 import { ChatSidebar } from '../../components/chat/ChatSidebar';
 import { ChatHeader } from '../../components/chat/ChatHeader';
 import { MessageList } from '../../components/chat/MessageList';
 import { MessageInput } from '../../components/chat/MessageInput';
+import { NotificationBell } from '../../components/chat/NotificationBell';
+import { NotificationToast } from '../../components/chat/NotificationToast';
 import type {
   Conversation,
   ChatUser,
   Message,
   SendMessagePayload,
   ReactType,
+  NotificationItem,
 } from '../../types/chat.types';
 
 export const ChatPage: React.FC = () => {
@@ -26,6 +30,10 @@ export const ChatPage: React.FC = () => {
   const [activeChatUser, setActiveChatUser] = useState<ChatUser | null>(null);
   const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [toastNotification, setToastNotification] = useState<NotificationItem | null>(null);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   // 1. Quản lý tin nhắn & Cursor-based Pagination
   const {
@@ -61,6 +69,11 @@ export const ChatPage: React.FC = () => {
       if (ids && ids.length > 0) {
         setOnlineUserIds(new Set(ids));
       }
+    });
+
+    // Lấy danh sách thông báo ban đầu từ MySQL qua GET /api/notifications
+    notificationService.getMyNotifications().then((res) => {
+      setNotifications(res.notifications);
     });
   }, [fetchConversations]);
 
@@ -100,7 +113,26 @@ export const ChatPage: React.FC = () => {
     [activeConversationId, appendMessage, fetchConversations]
   );
 
-  // 4. Khởi tạo kết nối STOMP WebSocket (Nghe cả tin nhắn, reaction và online/offline presence)
+  // Xử lý khi nhận thông báo realtime từ RabbitMQ (/user/queue/notifications)
+  const handleNotificationReceived = useCallback(
+    (incoming: NotificationItem) => {
+      setNotifications((prev) => {
+        if (prev.some((n) => n.id === incoming.id)) return prev;
+        return [incoming, ...prev];
+      });
+
+      // Chỉ bật Toast popup nổi nếu người dùng chưa mở đúng cuộc trò chuyện đó
+      if (
+        incoming.notificationType !== 'MESSAGE' ||
+        incoming.referenceId !== activeConversationId
+      ) {
+        setToastNotification(incoming);
+      }
+    },
+    [activeConversationId]
+  );
+
+  // 4. Khởi tạo kết nối STOMP WebSocket (Nghe tin nhắn, reaction, presence và thông báo)
   const { isConnected, sendMessage, sendReaction } = useChatWebSocket({
     onMessageReceived: handleIncomingMessage,
     onReactionReceived: (event) => {
@@ -117,19 +149,57 @@ export const ChatPage: React.FC = () => {
         return next;
       });
     },
+    onNotificationReceived: handleNotificationReceived,
   });
 
   // 5. Chọn cuộc hội thoại
-  const handleSelectConversation = (conversationId: number, otherUser?: ChatUser) => {
-    setActiveConversationId(conversationId);
-    setReplyingMessage(null); // Đổi cuộc trò chuyện thì xóa trạng thái reply đang chờ
-    if (otherUser) {
-      setActiveChatUser(otherUser);
-    } else {
-      const found = conversations.find((c) => c.id === conversationId);
-      setActiveChatUser(found?.otherUser || null);
-    }
-  };
+  const handleSelectConversation = useCallback(
+    (conversationId: number, otherUser?: ChatUser) => {
+      setActiveConversationId(conversationId);
+      setReplyingMessage(null); // Đổi cuộc trò chuyện thì xóa trạng thái reply đang chờ
+      if (otherUser) {
+        setActiveChatUser(otherUser);
+      } else {
+        const found = conversations.find((c) => c.id === conversationId);
+        setActiveChatUser(found?.otherUser || null);
+      }
+    },
+    [conversations]
+  );
+
+  const handleNotificationClick = useCallback(
+    (notification: NotificationItem) => {
+      setToastNotification(null);
+
+      if (!notification.isRead) {
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
+        );
+        notificationService
+          .markAsRead(notification.id)
+          .catch((err) => console.error('Lỗi đánh dấu thông báo đã đọc:', err));
+      }
+
+      if (
+        notification.referenceId &&
+        (notification.notificationType === 'MESSAGE' || notification.notificationType === 'MENTION')
+      ) {
+        handleSelectConversation(notification.referenceId);
+      }
+    },
+    [handleSelectConversation]
+  );
+
+  const handleMarkAllAsRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    notificationService
+      .markAllAsRead()
+      .catch((err) => console.error('Lỗi đánh dấu tất cả thông báo đã đọc:', err));
+  }, []);
+
+  const handleDismissToast = useCallback(() => {
+    setToastNotification(null);
+  }, []);
 
   // 6. Gửi tin nhắn qua STOMP (/app/chat.send)
   const handleSendMessage = (content: string) => {
@@ -270,6 +340,14 @@ export const ChatPage: React.FC = () => {
             {isConnected ? 'Đã kết nối' : 'Mất kết nối'}
           </div>
 
+          {/* Chuông thông báo */}
+          <NotificationBell
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onNotificationClick={handleNotificationClick}
+            onMarkAllAsRead={handleMarkAllAsRead}
+          />
+
           {/* User Profile & Logout */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '14px', fontWeight: 500, color: '#334155' }}>
@@ -385,6 +463,13 @@ export const ChatPage: React.FC = () => {
           )}
         </main>
       </div>
+
+      {/* Toast thông báo nổi khi có sự kiện mới */}
+      <NotificationToast
+        notification={toastNotification}
+        onClick={handleNotificationClick}
+        onDismiss={handleDismissToast}
+      />
     </div>
   );
 };
