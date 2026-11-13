@@ -1,0 +1,83 @@
+/* ==========================================================================
+   ChatHeader Styles
+   ========================================================================== */
+
+.chat-header {
+  height: 64px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.chat-header-avatar-wrap {
+  position: relative;
+}
+
+.chat-header-avatar-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.chat-header-avatar-fallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e0e7ff;
+  color: #4338ca;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.chat-header-dot {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  transition: background-color 0.2s ease;
+}
+
+.chat-header-dot--online {
+  background: #22c55e;
+}
+
+.chat-header-dot--offline {
+  background: #94a3b8;
+}
+
+.chat-header-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.chat-header-status {
+  font-size: 12px;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-header-status--online {
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.chat-header-status--offline {
+  color: #64748b;
+  font-weight: 400;
+}
+

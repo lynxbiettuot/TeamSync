@@ -62,10 +62,7 @@ export const chatService = {
     return data as DirectConversationResponse;
   },
 
-  /**
-   * Lấy lịch sử chat (Cursor-based pagination)
-   * GET /api/messages/{conversationId}?limit=20&beforeId={messageId}
-   */
+   //Lấy lịch sử chat (Cursor-based pagination)
   async getMessages(
     conversationId: number,
     limit: number = 20,
@@ -100,10 +97,8 @@ export const chatService = {
     return { data: [], hasMore: false };
   },
 
-  /**
-   * Lấy danh sách ID các user đang online ban đầu từ Redis
-   * GET /api/presence/online
-   */
+
+  //Lấy danh sách ID các user đang online ban đầu từ Redis
   async getOnlineUsers(): Promise<number[]> {
     try {
       const res = await apiClient.get<unknown>('/api/presence/online');

@@ -93,7 +93,8 @@ public class ConversationService {
                                                     currentUser.getEmail(),
                                                     currentUser.getDisplayName(),
                                                     currentUser.getAvatarUrl(),
-                                                    currentUser.getStatus()));
+                                                    currentUser.getStatus(),
+                                                    currentUser.getPublicKey()));
 
                     LocalDateTime updatedAt = conversation.getCreatedAt() != null ? conversation.getCreatedAt() : LocalDateTime.now();
 

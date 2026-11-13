@@ -35,20 +35,19 @@ public class NotificationConsumer {
                     .orElse("Ai đó");
         }
 
-        //cut down the message if preview is too long
+        // cut down the message if preview is too long
         String preview = event.getRawContent() != null ? event.getRawContent() : "";
         if (preview.length() > 50) {
             preview = preview.substring(0, 50) + "...";
         }
 
-
         String finalContent = switch (event.getNotificationType()) {
-            case MESSAGE -> senderName + " đã gửi tin nhắn: " + preview;
-            case CALL -> "Bạn có cuộc gọi nhỡ từ " + senderName;
-            case MENTION -> senderName + " đã nhắc đến bạn: " + preview;
+            case MESSAGE -> senderName + " sent you a message ";
+            case CALL -> "Miss a call from " + senderName;
+            case MENTION -> senderName + " mention: " + preview;
         };
 
-        //save to db
+        // save to db
         Notification notification = new Notification();
         notification.setUser(receiver);
         notification.setNotificationType(event.getNotificationType());
@@ -58,22 +57,20 @@ public class NotificationConsumer {
         notification.setCreatedAt(LocalDateTime.now());
         notification.setUpdatedAt(LocalDateTime.now());
 
-        Notification saved = notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);// save notification to DB
 
-        //send notification
+        // send notification
         NotificationResponse response = new NotificationResponse(
                 saved.getId(),
                 saved.getNotificationType(),
                 saved.getContent(),
                 saved.getReferenceId(),
                 saved.isRead(),
-                saved.getCreatedAt()
-        );
+                saved.getCreatedAt());
         messagingTemplate.convertAndSendToUser(
                 String.valueOf(receiver.getId()),
                 "/queue/notifications",
-                response
-        );
+                response);
 
     }
 }

@@ -1,41 +1,55 @@
 // src/pages/chat/ChatPage.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { chatService } from '../../services/chatService';
-import { notificationService } from '../../services/notificationService';
+import { e2eeService } from '../../services/e2eeService';
+import { useConversations } from '../../hooks/useConversations';
+import { useChatPresence } from '../../hooks/useChatPresence';
+import { useChatNotifications } from '../../hooks/useChatNotifications';
 import { useChatMessages } from '../../hooks/useChatMessages';
 import { useChatWebSocket } from '../../hooks/useChatWebSocket';
-import { ChatSidebar } from '../../components/chat/ChatSidebar';
-import { ChatHeader } from '../../components/chat/ChatHeader';
-import { MessageList } from '../../components/chat/MessageList';
-import { MessageInput } from '../../components/chat/MessageInput';
-import { NotificationBell } from '../../components/chat/NotificationBell';
-import { NotificationToast } from '../../components/chat/NotificationToast';
-import type {
-  Conversation,
-  ChatUser,
-  Message,
-  SendMessagePayload,
-  ReactType,
-  NotificationItem,
-} from '../../types/chat.types';
+import { ChatSidebar } from '../../components/chat/ChatSidebar/ChatSidebar';
+import { ChatHeader } from '../../components/chat/ChatHeader/ChatHeader';
+import { MessageList } from '../../components/chat/MessageList/MessageList';
+import { MessageInput } from '../../components/chat/MessageInput/MessageInput';
+import { NotificationBell } from '../../components/chat/Notification/NotificationBell';
+import { NotificationToast } from '../../components/chat/Notification/NotificationToast';
+import './ChatPage.css';
+import type { Message, SendMessagePayload, ReactType } from '../../types/chat.types';
 
 export const ChatPage: React.FC = () => {
   const { user, logout } = useAuth();
   const currentUserId = user?.id ? Number(user.id) : undefined;
 
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
-  const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
-  const [activeChatUser, setActiveChatUser] = useState<ChatUser | null>(null);
   const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
-  const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [toastNotification, setToastNotification] = useState<NotificationItem | null>(null);
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  // 1. Quản lý danh sách hội thoại & chọn cuộc trò chuyện
+  const {
+    conversations,
+    isLoadingConversations,
+    activeConversationId,
+    activeChatUser,
+    selectConversation,
+    updateLastMessage,
+  } = useConversations(currentUserId);
 
-  // 1. Quản lý tin nhắn & Cursor-based Pagination
+  // 2. Quản lý trạng thái Online / Offline từ Redis qua WebSocket
+  const { onlineUserIds, handlePresenceReceived } = useChatPresence();
+
+  // 3. Quản lý thông báo realtime từ RabbitMQ & chuông thông báo
+  const {
+    notifications,
+    toastNotification,
+    unreadCount,
+    handleNotificationReceived,
+    handleNotificationClick,
+    handleMarkAllAsRead,
+    handleDismissToast,
+  } = useChatNotifications({
+    activeConversationId,
+    onNavigateToConversation: selectConversation,
+  });
+
+  // 4. Quản lý tin nhắn, cuộn trang & giải mã E2EE tự động
   const {
     messages,
     hasMore,
@@ -45,179 +59,125 @@ export const ChatPage: React.FC = () => {
     loadOlderMessages,
     appendMessage,
     updateReaction,
-  } = useChatMessages({ conversationId: activeConversationId });
+  } = useChatMessages({
+    conversationId: activeConversationId,
+    currentUserId,
+    activeChatUser,
+  });
 
-  // 2. Tải danh sách hội thoại gần đây & danh sách Online ban đầu khi vào trang
-  const fetchConversations = useCallback(async () => {
-    setIsLoadingConversations(true);
-    try {
-      const list = await chatService.getConversations();
-      setConversations(list);
-    } catch (err) {
-      console.error('Lỗi khi tải danh sách hội thoại:', err);
-      setConversations([]);
-    } finally {
-      setIsLoadingConversations(false);
-    }
-  }, []);
-
+  // 5. Khởi tạo cặp khóa E2EE trong IndexedDB & luôn đồng bộ lên Server
   useEffect(() => {
-    fetchConversations();
+    if (currentUserId) {
+      e2eeService.initE2EE(currentUserId).catch((err) => {
+        console.error('[E2EE] Lỗi khởi tạo E2EE:', err);
+      });
+    }
+  }, [currentUserId]);
 
-    // Lấy danh sách các userId đang Online ban đầu từ Redis
-    chatService.getOnlineUsers().then((ids) => {
-      if (ids && ids.length > 0) {
-        setOnlineUserIds(new Set(ids));
-      }
-    });
-
-    // Lấy danh sách thông báo ban đầu từ MySQL qua GET /api/notifications
-    notificationService.getMyNotifications().then((res) => {
-      setNotifications(res.notifications);
-    });
-  }, [fetchConversations]);
-
-  // 3. Xử lý khi có tin nhắn mới từ WebSocket STOMP (/user/queue/messages)
+  // 6. Xử lý khi nhận tin nhắn mới từ WebSocket (/user/queue/messages)
   const handleIncomingMessage = useCallback(
-    (newMsg: Message) => {
+    async (newMsg: Message) => {
       const msgConvId = newMsg.conversationId ?? newMsg.conversation_id;
+      let decryptedContent = newMsg.content;
 
-      // Nếu đang mở đúng conversation đó: append tin nhắn vào khung chat & cuộn xuống đáy
-      if (activeConversationId && msgConvId === activeConversationId) {
-        appendMessage(newMsg);
-      }
+      // Tìm thông tin người bạn chat để giải mã
+      const currentConv = conversations.find((c) => c.id === msgConvId);
+      const partnerUser =
+        currentConv?.otherUser || (activeConversationId === msgConvId ? activeChatUser : null);
 
-      // Cập nhật và đẩy cuộc hội thoại lên đầu Sidebar
-      setConversations((prev) => {
-        const existingIndex = prev.findIndex((c) => c.id === msgConvId);
-        const now = new Date().toISOString();
-
-        if (existingIndex > -1) {
-          const updatedConv: Conversation = {
-            ...prev[existingIndex],
-            lastMessage: newMsg.content,
-            last_message: newMsg.content,
-            updatedAt: newMsg.createdAt || newMsg.created_at || now,
-            updated_at: newMsg.createdAt || newMsg.created_at || now,
-          };
-          const nextList = [...prev];
-          nextList.splice(existingIndex, 1);
-          return [updatedConv, ...nextList];
+      if (currentUserId && partnerUser?.id) {
+        let pubKey = partnerUser.publicKey;
+        if (!pubKey) {
+          pubKey = await e2eeService.fetchLatestPublicKey(partnerUser.id);
         }
 
-        // Nếu là conversation mới chưa có trong list, fetch lại toàn bộ
-        fetchConversations();
-        return prev;
-      });
-    },
-    [activeConversationId, appendMessage, fetchConversations]
-  );
+        if (pubKey) {
+          try {
+            const sharedKey = await e2eeService.getSharedKey(
+              currentUserId,
+              partnerUser.id,
+              pubKey
+            );
+            if (sharedKey) {
+              decryptedContent = await e2eeService.decryptMessage(newMsg.content, sharedKey);
+            }
+          } catch (err) {
+            console.warn('[E2EE] Lỗi giải mã tin nhắn nhận:', err);
+          }
+        }
+      }
 
-  // Xử lý khi nhận thông báo realtime từ RabbitMQ (/user/queue/notifications)
-  const handleNotificationReceived = useCallback(
-    (incoming: NotificationItem) => {
-      setNotifications((prev) => {
-        if (prev.some((n) => n.id === incoming.id)) return prev;
-        return [incoming, ...prev];
-      });
+      const displayMsg: Message = {
+        ...newMsg,
+        content: decryptedContent,
+      };
 
-      // Chỉ bật Toast popup nổi nếu người dùng chưa mở đúng cuộc trò chuyện đó
-      if (
-        incoming.notificationType !== 'MESSAGE' ||
-        incoming.referenceId !== activeConversationId
-      ) {
-        setToastNotification(incoming);
+      if (activeConversationId && msgConvId === activeConversationId) {
+        appendMessage(displayMsg);
+      }
+
+      // Cập nhật nội dung đã giải mã lên Sidebar
+      if (msgConvId) {
+        updateLastMessage(
+          msgConvId,
+          decryptedContent,
+          newMsg.createdAt || newMsg.created_at
+        );
       }
     },
-    [activeConversationId]
+    [activeConversationId, activeChatUser, appendMessage, conversations, currentUserId, updateLastMessage]
   );
 
-  // 4. Khởi tạo kết nối STOMP WebSocket (Nghe tin nhắn, reaction, presence và thông báo)
+  // 7. Khởi tạo WebSocket STOMP
   const { isConnected, sendMessage, sendReaction } = useChatWebSocket({
     onMessageReceived: handleIncomingMessage,
     onReactionReceived: (event) => {
       updateReaction(event.messageId, event.reaction);
     },
-    onPresenceReceived: (event) => {
-      setOnlineUserIds((prev) => {
-        const next = new Set(prev);
-        if (event.status === 'ONLINE') {
-          next.add(event.userId);
-        } else {
-          next.delete(event.userId);
-        }
-        return next;
-      });
-    },
+    onPresenceReceived: handlePresenceReceived,
     onNotificationReceived: handleNotificationReceived,
   });
 
-  // 5. Chọn cuộc hội thoại
-  const handleSelectConversation = useCallback(
-    (conversationId: number, otherUser?: ChatUser) => {
-      setActiveConversationId(conversationId);
-      setReplyingMessage(null); // Đổi cuộc trò chuyện thì xóa trạng thái reply đang chờ
-      if (otherUser) {
-        setActiveChatUser(otherUser);
-      } else {
-        const found = conversations.find((c) => c.id === conversationId);
-        setActiveChatUser(found?.otherUser || null);
-      }
-    },
-    [conversations]
-  );
+  // 8. Gửi tin nhắn qua STOMP (/app/chat.send) với E2EE
+  const handleSendMessage = async (content: string) => {
+    if (!activeConversationId || !currentUserId) return;
 
-  const handleNotificationClick = useCallback(
-    (notification: NotificationItem) => {
-      setToastNotification(null);
-
-      if (!notification.isRead) {
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
-        );
-        notificationService
-          .markAsRead(notification.id)
-          .catch((err) => console.error('Lỗi đánh dấu thông báo đã đọc:', err));
-      }
-
-      if (
-        notification.referenceId &&
-        (notification.notificationType === 'MESSAGE' || notification.notificationType === 'MENTION')
-      ) {
-        handleSelectConversation(notification.referenceId);
-      }
-    },
-    [handleSelectConversation]
-  );
-
-  const handleMarkAllAsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    notificationService
-      .markAllAsRead()
-      .catch((err) => console.error('Lỗi đánh dấu tất cả thông báo đã đọc:', err));
-  }, []);
-
-  const handleDismissToast = useCallback(() => {
-    setToastNotification(null);
-  }, []);
-
-  // 6. Gửi tin nhắn qua STOMP (/app/chat.send)
-  const handleSendMessage = (content: string) => {
-    if (!activeConversationId) return;
-
-    // Tìm receiver_id từ activeChatUser hoặc otherUser trong conversation
     const currentConv = conversations.find((c) => c.id === activeConversationId);
     const receiverId = activeChatUser?.id || currentConv?.otherUser?.id;
+    let receiverPublicKey = activeChatUser?.publicKey || currentConv?.otherUser?.publicKey;
 
     if (!receiverId) {
       console.warn('Không xác định được receiver_id');
       return;
     }
 
+    // Nếu trong state chưa có thì lấy trực tiếp từ server
+    if (!receiverPublicKey) {
+      receiverPublicKey = await e2eeService.fetchLatestPublicKey(receiverId);
+    }
+
+    // Mã hóa tin nhắn nếu đối phương có Public Key (E2EE Tier 1)
+    let messageContentToSend = content;
+    if (receiverPublicKey) {
+      try {
+        const sharedKey = await e2eeService.getSharedKey(
+          currentUserId,
+          receiverId,
+          receiverPublicKey
+        );
+        if (sharedKey) {
+          messageContentToSend = await e2eeService.encryptMessage(content, sharedKey);
+          console.log('[E2EE] Đã mã hóa tin nhắn thành công trước khi gửi!');
+        }
+      } catch (err) {
+        console.error('[E2EE] Lỗi mã hóa tin nhắn, gửi dạng thường:', err);
+      }
+    }
+
     const payload: SendMessagePayload = {
       conversation_id: activeConversationId,
       receiver_id: receiverId,
-      content,
+      content: messageContentToSend,
       message_type: 'TEXT',
       reply_to_message_id: replyingMessage ? replyingMessage.id : null,
       replyToMessageId: replyingMessage ? replyingMessage.id : null,
@@ -226,31 +186,13 @@ export const ChatPage: React.FC = () => {
     const sent = sendMessage(payload);
 
     if (sent) {
-      // Sau khi gửi thành công, reset trạng thái reply
       setReplyingMessage(null);
-
-      // Cập nhật tin nhắn lên đầu sidebar ngay lập tức
-      const now = new Date().toISOString();
-      setConversations((prev) => {
-        const existingIndex = prev.findIndex((c) => c.id === activeConversationId);
-        if (existingIndex > -1) {
-          const updatedConv = {
-            ...prev[existingIndex],
-            lastMessage: content,
-            last_message: content,
-            updatedAt: now,
-            updated_at: now,
-          };
-          const nextList = [...prev];
-          nextList.splice(existingIndex, 1);
-          return [updatedConv, ...nextList];
-        }
-        return prev;
-      });
+      // Cập nhật text rõ lên Sidebar của người gửi
+      updateLastMessage(activeConversationId, content);
     }
   };
 
-  // 7. Gửi reaction qua STOMP (/app/chat.react)
+  // 9. Gửi reaction qua STOMP (/app/chat.react)
   const handleReactMessage = (messageId: number, reactType: ReactType) => {
     if (!activeConversationId) return;
 
@@ -275,68 +217,22 @@ export const ChatPage: React.FC = () => {
   const isChatUserOnline = otherChatUserId !== undefined && onlineUserIds.has(otherChatUserId);
 
   return (
-    <div
-      style={{
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        background: '#F8FAFC',
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-      }}
-    >
+    <div className="chat-page">
       {/* Top Navbar */}
-      <header
-        style={{
-          height: '60px',
-          background: '#FFFFFF',
-          borderBottom: '1px solid #E2E8F0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 24px',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div
-            style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
-              color: '#FFFFFF',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: '18px',
-            }}
-          >
-            T
-          </div>
-          <span style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A' }}>TeamSync</span>
+      <header className="chat-navbar">
+        <div className="chat-brand">
+          <div className="chat-brand-badge">T</div>
+          <span className="chat-brand-name">TeamSync</span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {/* Status Indicator: Trạng thái kết nối WebSocket của chính mình */}
+        <div className="chat-navbar-actions">
+          {/* Trạng thái kết nối WebSocket của chính mình */}
           <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '13px',
-              color: isConnected ? '#16A34A' : '#DC2626',
-            }}
+            className={`chat-ws-status ${
+              isConnected ? 'chat-ws-status--online' : 'chat-ws-status--offline'
+            }`}
           >
-            <span
-              style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: isConnected ? '#16A34A' : '#DC2626',
-              }}
-            />
+            <span className="chat-ws-dot" />
             {isConnected ? 'Đã kết nối' : 'Mất kết nối'}
           </div>
 
@@ -348,23 +244,10 @@ export const ChatPage: React.FC = () => {
             onMarkAllAsRead={handleMarkAllAsRead}
           />
 
-          {/* User Profile & Logout */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 500, color: '#334155' }}>
-              {user?.displayName || user?.email}
-            </span>
-            <button
-              onClick={logout}
-              style={{
-                padding: '6px 12px',
-                fontSize: '13px',
-                color: '#64748B',
-                background: '#F1F5F9',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-              }}
-            >
+          {/* User Profile & Đăng xuất */}
+          <div className="chat-user-menu">
+            <span className="chat-user-name">{user?.displayName || user?.email}</span>
+            <button onClick={logout} className="chat-logout-btn">
               Đăng xuất
             </button>
           </div>
@@ -372,36 +255,31 @@ export const ChatPage: React.FC = () => {
       </header>
 
       {/* Main Chat Workspace */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Left Sidebar: Danh sách chat và tìm kiếm người dùng (có chấm xanh online) */}
+      <div className="chat-workspace">
+        {/* Left Sidebar: Danh sách chat và tìm kiếm người dùng */}
         <ChatSidebar
           conversations={conversations}
           isLoading={isLoadingConversations}
           activeConversationId={activeConversationId}
-          onSelectConversation={handleSelectConversation}
+          onSelectConversation={(convId, user) => {
+            setReplyingMessage(null);
+            selectConversation(convId, user);
+          }}
           onlineUserIds={onlineUserIds}
         />
 
         {/* Right Section: Khung Chat */}
-        <main
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            background: '#F1F5F9',
-            overflow: 'hidden',
-          }}
-        >
+        <main className="chat-main">
           {activeConversationId ? (
             <>
-              {/* Header: Tên và Avatar người đang chat với chấm xanh & chữ "Đang hoạt động" */}
+              {/* Header: Tên và Avatar người đang chat */}
               <ChatHeader
                 user={activeChatUser || activeConv?.otherUser}
                 conversationName={activeConv?.name}
                 isOnline={isChatUserOnline}
               />
 
-              {/* Message List: Khung hiển thị tin nhắn (có scroll, cursor-based pagination) */}
+              {/* Message List: Danh sách tin nhắn & cuộn tải thêm */}
               <MessageList
                 messages={messages}
                 currentUserId={currentUserId}
@@ -414,48 +292,19 @@ export const ChatPage: React.FC = () => {
                 onReactMessage={handleReactMessage}
               />
 
-              {/* Message Input: Ô nhập tin nhắn và nút Gửi */}
+              {/* Message Input: Ô soạn thảo và gửi tin nhắn */}
               <MessageInput
                 onSendMessage={handleSendMessage}
-                disabled={!isConnected && false} // Vẫn cho phép gõ tin nhắn
+                disabled={false}
                 replyingMessage={replyingMessage}
                 onCancelReply={() => setReplyingMessage(null)}
               />
             </>
           ) : (
-            /* Khi chưa chọn cuộc hội thoại nào */
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#94A3B8',
-                gap: '12px',
-                padding: '24px',
-                textAlign: 'center',
-              }}
-            >
-              <div
-                style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '16px',
-                  background: '#EFF6FF',
-                  color: '#2563EB',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '28px',
-                }}
-              >
-                💬
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: 700, color: '#1E293B' }}>
-                Chào mừng bạn đến với TeamSync Chat
-              </div>
-              <p style={{ fontSize: '14px', color: '#64748B', maxWidth: '360px', margin: 0 }}>
+            <div className="chat-empty-state">
+              <div className="chat-empty-icon">💬</div>
+              <div className="chat-empty-title">Chào mừng bạn đến với TeamSync Chat</div>
+              <p className="chat-empty-subtitle">
                 Hãy tìm kiếm người dùng ở ô bên trái hoặc chọn một cuộc hội thoại gần đây để bắt đầu
                 nhắn tin.
               </p>

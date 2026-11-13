@@ -106,14 +106,14 @@ public class ChatController {
             //notification
             // push notification event and prevent myself notification
             if (request.getReceiverId() != null && !senderId.equals(request.getReceiverId())) {
-                NotificationEvent notificationEvent = new NotificationEvent(
+                NotificationEvent notificationEvent = new NotificationEvent(//define event
                         senderId,
                         request.getReceiverId(),
                         NotificationType.MESSAGE,
                         savedMessage.getContent(),
                         savedMessage.getConversation().getId()
                 );
-                notificationProducer.sendNotificationEvent(notificationEvent);
+                notificationProducer.sendNotificationEvent(notificationEvent);//publish event
             }
 
         } catch (Exception e) {

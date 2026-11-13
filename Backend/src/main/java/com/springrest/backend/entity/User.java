@@ -47,6 +47,10 @@ public class User {
     @Column(name = "google_id", unique = true, length = 100, nullable = true)
     private String googleId;
 
+    //filed for e2ee
+    @Column(name = "public_key", columnDefinition = "TEXT")
+    private String publicKey;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

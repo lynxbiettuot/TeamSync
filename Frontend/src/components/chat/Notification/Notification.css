@@ -1,0 +1,270 @@
+/* ==========================================================================
+   Notification Feature Styles (Bell Dropdown & Floating Toast)
+   ========================================================================== */
+
+.chat-notif--message {
+  --notif-accent-bg: #eff6ff;
+  --notif-accent-color: #2563eb;
+}
+
+.chat-notif--mention {
+  --notif-accent-bg: #fef3c7;
+  --notif-accent-color: #d97706;
+}
+
+.chat-notif--call {
+  --notif-accent-bg: #fef2f2;
+  --notif-accent-color: #dc2626;
+}
+
+/* ----- Notification Bell ----- */
+
+.chat-notif-wrapper {
+  position: relative;
+}
+
+.chat-notif-bell-btn {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chat-notif-bell-btn--open {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.chat-notif-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  box-sizing: border-box;
+  line-height: 1;
+}
+
+.chat-notif-dropdown {
+  position: absolute;
+  top: 46px;
+  right: 0;
+  width: 360px;
+  max-height: 440px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.chat-notif-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+}
+
+.chat-notif-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-notif-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.chat-notif-count-pill {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+.chat-notif-mark-all-btn {
+  background: transparent;
+  border: none;
+  color: #2563eb;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.chat-notif-mark-all-btn:hover {
+  background: #eff6ff;
+}
+
+.chat-notif-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.chat-notif-empty {
+  padding: 36px 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13.5px;
+}
+
+.chat-notif-empty-icon {
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+
+.chat-notif-item {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  background: #ffffff;
+  padding: 12px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.chat-notif-item--unread {
+  background: #eff6ff;
+}
+
+.chat-notif-item:hover {
+  background: #f1f5f9;
+}
+
+.chat-notif-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--notif-accent-bg, #eff6ff);
+  color: var(--notif-accent-color, #2563eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.chat-notif-content-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-notif-text {
+  font-size: 13.5px;
+  font-weight: 400;
+  color: #1e293b;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.chat-notif-item--unread .chat-notif-text {
+  font-weight: 600;
+}
+
+.chat-notif-time {
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+.chat-notif-item--unread .chat-notif-time {
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.chat-notif-unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+/* ----- Notification Toast ----- */
+
+.chat-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 340px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid var(--notif-accent-color, #2563eb);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  z-index: 1100;
+  cursor: pointer;
+}
+
+.chat-toast-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-toast-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--notif-accent-color, #2563eb);
+  margin-bottom: 2px;
+}
+
+.chat-toast-text {
+  font-size: 13.5px;
+  color: #1e293b;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.chat-toast-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.chat-toast-close:hover {
+  color: #475569;
+}
+

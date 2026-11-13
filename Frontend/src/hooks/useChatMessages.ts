@@ -1,13 +1,67 @@
 // src/hooks/useChatMessages.ts
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { chatService } from '../services/chatService';
-import type { Message, MessageReaction } from '../types/chat.types';
+import { e2eeService } from '../services/e2eeService';
+import type { Message, MessageReaction, ChatUser } from '../types/chat.types';
 
 interface UseChatMessagesProps {
   conversationId: number | null;
+  currentUserId?: number;
+  activeChatUser?: ChatUser | null;
 }
 
-export function useChatMessages({ conversationId }: UseChatMessagesProps) {
+/**
+ * Helper giải mã danh sách tin nhắn bằng E2EE Shared Key
+ */
+async function decryptMessageBatch(
+  rawMessages: Message[],
+  currentUserId?: number,
+  partnerUser?: ChatUser | null
+): Promise<Message[]> {
+  if (!currentUserId || !partnerUser?.id) {
+    return rawMessages;
+  }
+
+  // Lấy Public Key của đối phương (từ state hoặc fetch trực tiếp từ server)
+  let partnerPubKey = partnerUser.publicKey;
+  if (!partnerPubKey) {
+    partnerPubKey = await e2eeService.fetchLatestPublicKey(partnerUser.id);
+  }
+
+  if (!partnerPubKey) {
+    return rawMessages;
+  }
+
+  try {
+    const sharedKey = await e2eeService.getSharedKey(
+      currentUserId,
+      partnerUser.id,
+      partnerPubKey
+    );
+
+    if (!sharedKey) return rawMessages;
+
+    return await Promise.all(
+      rawMessages.map(async (msg) => {
+        try {
+          const decrypted = await e2eeService.decryptMessage(msg.content, sharedKey);
+          return { ...msg, content: decrypted };
+        } catch {
+          return msg;
+        }
+      })
+    );
+  } catch (err) {
+    console.warn('[E2EE] Lỗi giải mã batch tin nhắn:', err);
+    return rawMessages;
+  }
+}
+
+export function useChatMessages({
+  conversationId,
+  currentUserId,
+  activeChatUser,
+}: UseChatMessagesProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingInitial, setIsLoadingInitial] = useState(false);
@@ -19,7 +73,7 @@ export function useChatMessages({ conversationId }: UseChatMessagesProps) {
   const isInitialLoadRef = useRef<boolean>(false);
   const shouldScrollToBottomRef = useRef<boolean>(false);
 
-  // 1. Khi đổi conversationId: load danh sách tin nhắn đầu tiên (không truyền beforeId)
+  // 1. Khi đổi conversationId hoặc activeChatUser: load tin nhắn và giải mã E2EE
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
@@ -33,9 +87,13 @@ export function useChatMessages({ conversationId }: UseChatMessagesProps) {
 
     chatService
       .getMessages(conversationId, 20)
-      .then((res) => {
+      .then(async (res) => {
         if (isCancelled) return;
-        setMessages(res.data || []);
+        const rawList = res.data || [];
+        const decryptedList = await decryptMessageBatch(rawList, currentUserId, activeChatUser);
+
+        if (isCancelled) return;
+        setMessages(decryptedList);
         setHasMore(Boolean(res.hasMore));
         isInitialLoadRef.current = true;
       })
@@ -54,7 +112,7 @@ export function useChatMessages({ conversationId }: UseChatMessagesProps) {
     return () => {
       isCancelled = true;
     };
-  }, [conversationId]);
+  }, [conversationId, currentUserId, activeChatUser]);
 
   // 2. Cuộn lên để tải thêm tin nhắn cũ (Cursor-based Pagination)
   const loadOlderMessages = useCallback(async () => {
@@ -65,7 +123,6 @@ export function useChatMessages({ conversationId }: UseChatMessagesProps) {
     const container = chatContainerRef.current;
     if (!container) return;
 
-    // Lấy id tin nhắn cũ nhất (tin nhắn trên cùng) làm beforeId
     const oldestMessage = messages[0];
     const beforeId = oldestMessage.id;
 
@@ -80,19 +137,22 @@ export function useChatMessages({ conversationId }: UseChatMessagesProps) {
         return;
       }
 
+      // Giải mã E2EE cho các tin nhắn cũ vừa tải về
+      const decryptedOlder = await decryptMessageBatch(older, currentUserId, activeChatUser);
+
       // Lưu lại chiều cao hiện tại trước khi prepend
       prevScrollHeightRef.current = container.scrollHeight;
       isPrependRef.current = true;
 
       // Nối tin nhắn cũ vào đầu mảng
-      setMessages((prev) => [...older, ...prev]);
+      setMessages((prev) => [...decryptedOlder, ...prev]);
       setHasMore(Boolean(res.hasMore));
     } catch (err) {
       console.error('Lỗi tải thêm tin nhắn cũ:', err);
     } finally {
       setIsLoadingMore(false);
     }
-  }, [conversationId, hasMore, isLoadingMore, isLoadingInitial, messages]);
+  }, [conversationId, hasMore, isLoadingMore, isLoadingInitial, messages, currentUserId, activeChatUser]);
 
   // 3. Xử lý giữ nguyên vị trí cuộn bằng useLayoutEffect (Tránh giật màn hình)
   useLayoutEffect(() => {
@@ -100,23 +160,20 @@ export function useChatMessages({ conversationId }: UseChatMessagesProps) {
     if (!container) return;
 
     if (isPrependRef.current) {
-      // Khi prepend tin nhắn cũ: điều chỉnh scrollTop theo độ chênh lệch scrollHeight
       const newScrollHeight = container.scrollHeight;
       const heightDifference = newScrollHeight - prevScrollHeightRef.current;
       container.scrollTop = heightDifference;
       isPrependRef.current = false;
     } else if (isInitialLoadRef.current) {
-      // Lần đầu tải tin nhắn xong: cuộn xuống đáy
       container.scrollTop = container.scrollHeight;
       isInitialLoadRef.current = false;
     } else if (shouldScrollToBottomRef.current) {
-      // Khi có tin nhắn mới được gửi hoặc nhận
       container.scrollTop = container.scrollHeight;
       shouldScrollToBottomRef.current = false;
     }
   }, [messages]);
 
-  // Thêm tin nhắn mới vào danh sách (từ WebSocket hoặc người dùng gửi)
+  // Thêm tin nhắn mới vào danh sách
   const appendMessage = useCallback((newMsg: Message) => {
     setMessages((prev) => {
       if (prev.some((m) => m.id === newMsg.id)) {
@@ -127,7 +184,7 @@ export function useChatMessages({ conversationId }: UseChatMessagesProps) {
     shouldScrollToBottomRef.current = true;
   }, []);
 
-  // Cập nhật reaction của một tin nhắn (từ WebSocket REACTION event)
+  // Cập nhật reaction của một tin nhắn
   const updateReaction = useCallback((messageId: number, reaction: MessageReaction) => {
     setMessages((prev) =>
       prev.map((msg) => {
@@ -137,10 +194,8 @@ export function useChatMessages({ conversationId }: UseChatMessagesProps) {
         let updatedReactions: MessageReaction[];
 
         if (!reaction.reactType) {
-          // Gỡ bỏ reaction của user này (khi reactType là null)
           updatedReactions = currentReactions.filter((r) => r.userId !== reaction.userId);
         } else {
-          // Cập nhật đổi icon hoặc thêm mới
           const existingIdx = currentReactions.findIndex((r) => r.userId === reaction.userId);
           if (existingIdx > -1) {
             updatedReactions = [...currentReactions];
