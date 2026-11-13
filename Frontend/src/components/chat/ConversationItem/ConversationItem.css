@@ -1,0 +1,107 @@
+/* ==========================================================================
+   ConversationItem Styles
+   ========================================================================== */
+
+.chat-conv-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  gap: 12px;
+  background: transparent;
+  border-left: 3.5px solid transparent;
+  transition: background-color 0.15s ease;
+}
+
+.chat-conv-item:hover {
+  background: #f8fafc;
+}
+
+.chat-conv-item--active,
+.chat-conv-item--active:hover {
+  background: #eff6ff;
+  border-left-color: #2563eb;
+}
+
+.chat-conv-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.chat-conv-avatar-img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.chat-conv-avatar-fallback {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #e0e7ff;
+  color: #4338ca;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.chat-conv-online-dot {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.chat-conv-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-conv-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.chat-conv-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-conv-item--active .chat-conv-name {
+  font-weight: 700;
+}
+
+.chat-conv-time {
+  font-size: 11.5px;
+  color: #94a3b8;
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+
+.chat-conv-preview {
+  font-size: 13px;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-conv-item--active .chat-conv-preview {
+  color: #2563eb;
+}
+

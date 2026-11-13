@@ -14,15 +14,13 @@ public class UserResponseDTO {
     private String displayName;
     private String avatarUrl;
     private UserStatus status;
+    private String publicKey;
 
-    @Override
-    public String toString() {
-        return "UserResponseDTO{" +
-                "email='" + email + '\'' +
-                ", id=" + id +
-                ", displayName='" + displayName + '\'' +
-                ", avatarUrl='" + avatarUrl + '\'' +
-                ", status=" + status +
-                '}';
+    public UserResponseDTO(Integer id, String email, String displayName, String avatarUrl, UserStatus status) {
+        this.id = id;
+        this.email = email;
+        this.displayName = displayName;
+        this.avatarUrl = avatarUrl;
+        this.status = status;
     }
 }

@@ -10,6 +10,7 @@ export interface ChatUser {
   displayName: string;
   avatarUrl: string | null;
   status?: string;
+  publicKey?: string | null;
 }
 
 /** Cuộc hội thoại ở Sidebar */

@@ -1,5 +1,5 @@
-// src/components/chat/notificationHelpers.ts
-import type { NotificationType } from '../../types/chat.types';
+// src/components/chat/Notification/notificationHelpers.ts
+import type { NotificationType } from '../../../types/chat.types';
 
 export interface NotificationMeta {
   icon: string;
