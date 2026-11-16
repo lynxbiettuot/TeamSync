@@ -12,6 +12,8 @@ import type {
   MessageEditEvent,
   MessageDeleteEvent,
   ConversationDeleteEvent,
+  ConversationCreateEvent,
+  ConversationUpdateEvent,
   UserPresenceEvent,
   NotificationItem,
 } from '../types/chat.types';
@@ -23,6 +25,8 @@ interface UseChatWebSocketProps {
   onMessageEdited?: (event: MessageEditEvent) => void;
   onMessageDeleted?: (event: MessageDeleteEvent) => void;
   onConversationDeleted?: (event: ConversationDeleteEvent) => void;
+  onConversationCreated?: (event: ConversationCreateEvent) => void;
+  onConversationUpdated?: (event: ConversationUpdateEvent) => void;
   onPresenceReceived?: (event: UserPresenceEvent) => void;
   onNotificationReceived?: (notification: NotificationItem) => void;
   onCallSignalReceived?: (signal: CallSignalPayload) => void;
@@ -34,6 +38,8 @@ export function useChatWebSocket({
   onMessageEdited,
   onMessageDeleted,
   onConversationDeleted,
+  onConversationCreated,
+  onConversationUpdated,
   onPresenceReceived,
   onNotificationReceived,
   onCallSignalReceived,
@@ -45,6 +51,8 @@ export function useChatWebSocket({
   const onMessageEditedRef = useRef(onMessageEdited);
   const onMessageDeletedRef = useRef(onMessageDeleted);
   const onConversationDeletedRef = useRef(onConversationDeleted);
+  const onConversationCreatedRef = useRef(onConversationCreated);
+  const onConversationUpdatedRef = useRef(onConversationUpdated);
   const onPresenceReceivedRef = useRef(onPresenceReceived);
   const onNotificationReceivedRef = useRef(onNotificationReceived);
   const onCallSignalReceivedRef = useRef(onCallSignalReceived);
@@ -56,6 +64,8 @@ export function useChatWebSocket({
     onMessageEditedRef.current = onMessageEdited;
     onMessageDeletedRef.current = onMessageDeleted;
     onConversationDeletedRef.current = onConversationDeleted;
+    onConversationCreatedRef.current = onConversationCreated;
+    onConversationUpdatedRef.current = onConversationUpdated;
     onPresenceReceivedRef.current = onPresenceReceived;
     onNotificationReceivedRef.current = onNotificationReceived;
     onCallSignalReceivedRef.current = onCallSignalReceived;
@@ -65,6 +75,8 @@ export function useChatWebSocket({
     onMessageEdited,
     onMessageDeleted,
     onConversationDeleted,
+    onConversationCreated,
+    onConversationUpdated,
     onPresenceReceived,
     onNotificationReceived,
     onCallSignalReceived,
@@ -105,6 +117,14 @@ export function useChatWebSocket({
             } else if (parsed && parsed.type === 'CONVERSATION_DELETE') {
               if (onConversationDeletedRef.current) {
                 onConversationDeletedRef.current(parsed as ConversationDeleteEvent);
+              }
+            } else if (parsed && parsed.type === 'CONVERSATION_CREATE') {
+              if (onConversationCreatedRef.current) {
+                onConversationCreatedRef.current(parsed as ConversationCreateEvent);
+              }
+            } else if (parsed && parsed.type === 'CONVERSATION_UPDATE') {
+              if (onConversationUpdatedRef.current) {
+                onConversationUpdatedRef.current(parsed as ConversationUpdateEvent);
               }
             } else {
               if (onMessageReceivedRef.current) {

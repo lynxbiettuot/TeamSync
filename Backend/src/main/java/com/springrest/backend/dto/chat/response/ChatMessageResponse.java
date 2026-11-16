@@ -19,8 +19,10 @@ public class ChatMessageResponse {
     private String content;
     private MessageType messageType;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private Boolean isDeleted;
     private ReplyMessageDTO replyTo;
-    private List<MessageReactionResponse> reactions = new ArrayList<>();// list variable must ussually have to pre-define when use loomlok
+    private List<MessageReactionResponse> reactions = new ArrayList<>();
 
     public ChatMessageResponse(Integer id,Integer conversationId, Integer senderId, String content, MessageType messageType,LocalDateTime createdAt) {
         this.id = id;
@@ -29,6 +31,8 @@ public class ChatMessageResponse {
         this.content = content;
         this.messageType = messageType;
         this.createdAt = createdAt;
+        this.updatedAt = null;
+        this.isDeleted = false;
         this.replyTo = null;
         this.reactions = new ArrayList<>();
     }

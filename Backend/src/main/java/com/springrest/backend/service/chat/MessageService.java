@@ -1,5 +1,6 @@
 package com.springrest.backend.service.chat;
 
+import com.springrest.backend.dto.chat.request.EditMessageRequest;
 import com.springrest.backend.dto.chat.response.ChatMessageResponse;
 import com.springrest.backend.dto.chat.response.MessageReactionResponse;
 import com.springrest.backend.dto.chat.response.ReplyMessageDTO;
@@ -8,16 +9,22 @@ import com.springrest.backend.repository.MessageRepository;
 import com.springrest.backend.repository.ParticipantRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class MessageService {
-    private  final MessageRepository messageRepository;
+    private final MessageRepository messageRepository;
     private final ParticipantRepository participantRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public List<ChatMessageResponse> getMessagesByConversationId(Integer conversationId) {
@@ -32,18 +39,20 @@ public class MessageService {
                 m.getId(),
                 m.getConversation().getId(),
                 m.getUser().getId(),
-                m.getContent(),
+                m.getDeletedAt() != null ? "Tin nhắn đã bị thu hồi" : m.getContent(),
                 m.getMessageType(),
                 m.getCreatedAt()
-        );
-            //get reply message if exist
+            );
+            res.setUpdatedAt(m.getUpdatedAt());
+            res.setIsDeleted(m.getDeletedAt() != null);
+
             if(m.getReplyToMessage() != null) {
                 Message parent = m.getReplyToMessage();
-                String senderName = parent.getUser() != null ?parent.getUser().getDisplayName() : "Unknown";
-                res.setReplyTo(new ReplyMessageDTO(parent.getId(), parent.getContent(), senderName));
+                String senderName = parent.getUser() != null ? parent.getUser().getDisplayName() : "Unknown";
+                String parentContent = parent.getDeletedAt() != null ? "Tin nhắn đã bị thu hồi" : parent.getContent();
+                res.setReplyTo(new ReplyMessageDTO(parent.getId(), parentContent, senderName));
             }
 
-            //react message
             if(m.getMessageReactions() != null && !m.getMessageReactions().isEmpty()) {
                 List<MessageReactionResponse> listReactions = m.getMessageReactions().stream()
                         .map(r -> new MessageReactionResponse(
@@ -63,5 +72,86 @@ public class MessageService {
     public List<Integer> findListMembersJoinConversation(Integer conversationId) {
         List<Integer> listMessage = participantRepository.findMembersJoinConversation(conversationId);
         return listMessage;
+    }
+
+    @Transactional
+    public ChatMessageResponse editMessage(Integer currentUserId, Integer messageId, EditMessageRequest request) {
+        Message message = messageRepository.findByIdWithUserAndConversation(messageId)
+                .orElseThrow(() -> new IllegalArgumentException("Tin nhắn không tồn tại"));
+
+        if (!message.getUser().getId().equals(currentUserId)) {
+            throw new AccessDeniedException("Bạn không có quyền sửa tin nhắn này");
+        }
+
+        if (message.getDeletedAt() != null) {
+            throw new IllegalStateException("Không thể chỉnh sửa tin nhắn đã bị thu hồi");
+        }
+
+        message.setContent(request.getNewContent());
+        message.setUpdatedAt(LocalDateTime.now());
+        Message updatedMessage = messageRepository.save(message);
+
+        ChatMessageResponse response = new ChatMessageResponse(
+                updatedMessage.getId(),
+                updatedMessage.getConversation().getId(),
+                updatedMessage.getUser().getId(),
+                updatedMessage.getContent(),
+                updatedMessage.getMessageType(),
+                updatedMessage.getCreatedAt()
+        );
+        response.setUpdatedAt(updatedMessage.getUpdatedAt());
+        response.setIsDeleted(false);
+
+        Map<String, Object> wsEvent = new LinkedHashMap<>();
+        wsEvent.put("type", "MESSAGE_EDIT");
+        wsEvent.put("conversationId", message.getConversation().getId());
+        wsEvent.put("message", response);
+
+        if (request.getReceiverId() != null) {
+            messagingTemplate.convertAndSendToUser(
+                    String.valueOf(request.getReceiverId()),
+                    "/queue/messages",
+                    wsEvent
+            );
+        }
+        messagingTemplate.convertAndSendToUser(
+                String.valueOf(currentUserId),
+                "/queue/messages",
+                wsEvent
+        );
+
+        return response;
+    }
+
+    @Transactional
+    public void deleteMessage(Integer currentUserId, Integer messageId, Integer receiverId) {
+        Message message = messageRepository.findByIdWithUserAndConversation(messageId)
+                .orElseThrow(() -> new IllegalArgumentException("Tin nhắn không tồn tại"));
+
+        if (!message.getUser().getId().equals(currentUserId)) {
+            throw new AccessDeniedException("Bạn không có quyền thu hồi tin nhắn này");
+        }
+
+        message.setDeletedAt(LocalDateTime.now());
+        message.setContent("Tin nhắn đã bị thu hồi");
+        messageRepository.save(message);
+
+        Map<String, Object> wsEvent = new LinkedHashMap<>();
+        wsEvent.put("type", "MESSAGE_DELETE");
+        wsEvent.put("conversationId", message.getConversation().getId());
+        wsEvent.put("messageId", messageId);
+
+        if (receiverId != null) {
+            messagingTemplate.convertAndSendToUser(
+                    String.valueOf(receiverId),
+                    "/queue/messages",
+                    wsEvent
+            );
+        }
+        messagingTemplate.convertAndSendToUser(
+                String.valueOf(currentUserId),
+                "/queue/messages",
+                wsEvent
+        );
     }
 }

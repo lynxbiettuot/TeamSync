@@ -20,4 +20,7 @@ public interface MessageRepository extends JpaRepository<Message,Integer> {
     //select message with user attribute is lazy
     @Query("SELECT m FROM Message m LEFT JOIN FETCH m.user WHERE m.id = :id")
     Optional<Message> findByIdWithUser(@Param("id") Integer id);
+
+    @Query("SELECT m FROM Message m JOIN FETCH m.user JOIN FETCH m.conversation WHERE m.id = :id")
+    Optional<Message> findByIdWithUserAndConversation(@Param("id") Integer id);
 }

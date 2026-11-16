@@ -1,32 +1,56 @@
-// Header hiển thị tên, avatar, trạng thái online, nút quay lại trên mobile, nút gọi Video/Thoại và xóa hội thoại
-import React from 'react';
-import type { ChatUser } from '../../../types/chat.types';
+// src/components/chat/ChatHeader/ChatHeader.tsx
+// Header hiển thị tên, avatar, trạng thái online, nút quay lại, nút gọi Video (1-1) và nút quản lý thông tin nhóm (Group)
+import React, { useState } from 'react';
+import type { ChatUser, Conversation } from '../../../types/chat.types';
 import type { CallType } from '../../../types/call.types';
 import { CallHeaderActions } from '../VideoCall/CallHeaderActions';
 import { BackArrowIcon } from '../VideoCall/CallIcons';
+import { GroupDetailsModal } from '../GroupModal/GroupDetailsModal';
 import './ChatHeader.css';
 
 interface ChatHeaderProps {
   user?: ChatUser | null;
+  conversation?: Conversation | null;
   conversationName?: string | null;
   isOnline?: boolean;
   isInCall?: boolean;
   onBack?: () => void;
   onStartCall?: (partner: ChatUser, type: CallType) => void;
   onDeleteConversation?: () => void;
+  onUpdateGroupName?: (conversationId: number, newName: string) => Promise<void>;
+  onAddMembers?: (conversationId: number, memberIds: number[]) => Promise<void>;
+  onRemoveMember?: (conversationId: number, targetUserId: number) => Promise<void>;
+  onLeaveGroup?: (conversationId: number) => Promise<void>;
+  currentUserId?: number;
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
   user,
+  conversation,
   conversationName,
   isOnline = false,
   isInCall = false,
   onBack,
   onStartCall,
   onDeleteConversation,
+  onUpdateGroupName,
+  onAddMembers,
+  onRemoveMember,
+  onLeaveGroup,
+  currentUserId,
 }) => {
-  const displayName = user?.displayName || conversationName || 'Cuộc trò chuyện';
-  const avatar = user?.avatarUrl;
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+
+  const isGroup = conversation?.type === 'GROUP' || conversation?.conversationType === 'GROUP';
+
+  const displayName = isGroup
+    ? conversation?.name || conversationName || 'Nhóm trò chuyện'
+    : user?.displayName || conversationName || 'Cuộc trò chuyện';
+
+  const avatar = isGroup
+    ? conversation?.avatarUrl || conversation?.avatar_url
+    : user?.avatarUrl;
+
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
@@ -43,38 +67,63 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         </button>
       )}
 
-      {/* Avatar với Chấm Trạng Thái */}
+      {/* Avatar với Chấm Trạng Thái (1-1) hoặc Biểu tượng nhóm */}
       <div className="chat-header-avatar-wrap">
         {avatar ? (
           <img src={avatar} alt={displayName} className="chat-header-avatar-img" />
         ) : (
-          <div className="chat-header-avatar-fallback">{initial}</div>
+          <div
+            className="chat-header-avatar-fallback"
+            style={isGroup ? { background: '#f5f3ff', color: '#7c3aed' } : undefined}
+          >
+            {isGroup ? '👥' : initial}
+          </div>
         )}
 
-        {/* Chấm tròn báo trạng thái */}
-        <span
-          title={isOnline ? 'Đang hoạt động' : 'Không hoạt động'}
-          className={`chat-header-dot ${
-            isOnline ? 'chat-header-dot--online' : 'chat-header-dot--offline'
-          }`}
-        />
+        {/* Chấm tròn báo trạng thái (chỉ 1-1) */}
+        {!isGroup && (
+          <span
+            title={isOnline ? 'Đang hoạt động' : 'Không hoạt động'}
+            className={`chat-header-dot ${
+              isOnline ? 'chat-header-dot--online' : 'chat-header-dot--offline'
+            }`}
+          />
+        )}
       </div>
 
-      {/* Tên và Trạng thái */}
+      {/* Tên và Trạng thái / Số lượng thành viên */}
       <div className="chat-header-info">
         <div className="chat-header-name">{displayName}</div>
         <div
           className={`chat-header-status ${
-            isOnline ? 'chat-header-status--online' : 'chat-header-status--offline'
+            !isGroup && isOnline ? 'chat-header-status--online' : 'chat-header-status--offline'
           }`}
         >
-          {isOnline ? 'Đang hoạt động' : 'Không hoạt động'}
+          {isGroup
+            ? `${conversation?.members?.length || 0} thành viên`
+            : isOnline
+            ? 'Đang hoạt động'
+            : 'Không hoạt động'}
         </div>
       </div>
 
-      {/* Action buttons góc phải: Gọi và Xóa cuộc trò chuyện */}
+      {/* Action buttons góc phải: Gọi (1-1), Xem thông tin nhóm (Group) và Xóa cuộc trò chuyện */}
       <div className="chat-header-actions-wrap">
-        {onStartCall && user && (
+        {/* Nút mở modal thông tin nhóm nếu là Group */}
+        {isGroup && (
+          <button
+            type="button"
+            className="chat-header-group-btn"
+            onClick={() => setIsGroupModalOpen(true)}
+            title="Xem thông tin và thành viên nhóm"
+            aria-label="Thông tin nhóm"
+          >
+            👥
+          </button>
+        )}
+
+        {/* Nút gọi Video / Thoại nếu là 1-1 */}
+        {!isGroup && onStartCall && user && (
           <CallHeaderActions
             partner={user}
             isOnline={isOnline}
@@ -83,7 +132,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           />
         )}
 
-        {onDeleteConversation && (
+        {/* Nút xóa cuộc trò chuyện (1-1) */}
+        {!isGroup && onDeleteConversation && (
           <button
             type="button"
             className="chat-header-delete-btn"
@@ -113,6 +163,21 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           </button>
         )}
       </div>
+
+      {/* Modal chi tiết nhóm */}
+      {isGroup && conversation && (
+        <GroupDetailsModal
+          isOpen={isGroupModalOpen}
+          onClose={() => setIsGroupModalOpen(false)}
+          conversation={conversation}
+          currentUserId={currentUserId}
+          onUpdateGroupName={onUpdateGroupName || (async () => {})}
+          onAddMembers={onAddMembers || (async () => {})}
+          onRemoveMember={onRemoveMember || (async () => {})}
+          onLeaveGroup={onLeaveGroup || (async () => {})}
+          onDisbandGroup={onDeleteConversation ? (async () => onDeleteConversation()) : (async () => {})}
+        />
+      )}
     </div>
   );
 };

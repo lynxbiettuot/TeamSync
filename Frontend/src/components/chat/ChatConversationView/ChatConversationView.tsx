@@ -1,3 +1,4 @@
+// src/components/chat/ChatConversationView/ChatConversationView.tsx
 // Component hiển thị không gian chat đang hoạt động: Header đối thoại, danh sách tin nhắn và ô nhập liệu
 import React from 'react';
 import type { Message, ChatUser, Conversation, ReactType } from '../../../types/chat.types';
@@ -29,6 +30,10 @@ interface ChatConversationViewProps {
   onEditMessage: (messageId: number, newContent: string) => void;
   onDeleteMessage: (messageId: number) => void;
   onSendMessage: (content: string) => void;
+  onUpdateGroupName?: (conversationId: number, newName: string) => Promise<void>;
+  onAddMembers?: (conversationId: number, memberIds: number[]) => Promise<void>;
+  onRemoveMember?: (conversationId: number, targetUserId: number) => Promise<void>;
+  onLeaveGroup?: (conversationId: number) => Promise<void>;
 }
 
 export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
@@ -53,18 +58,28 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
   onEditMessage,
   onDeleteMessage,
   onSendMessage,
+  onUpdateGroupName,
+  onAddMembers,
+  onRemoveMember,
+  onLeaveGroup,
 }) => {
   return (
     <main className="chat-main">
-      {/* Header: Tên và Avatar người đang chat & Nút Gọi */}
+      {/* Header: Tên và Avatar người đang chat / nhóm & Nút quản lý */}
       <ChatHeader
         user={activeChatUser || activeConv?.otherUser}
+        conversation={activeConv}
         conversationName={activeConv?.name}
         isOnline={isOnline}
         isInCall={isInCall}
         onBack={onBack}
         onStartCall={onStartCall}
         onDeleteConversation={onDeleteConversation}
+        onUpdateGroupName={onUpdateGroupName}
+        onAddMembers={onAddMembers}
+        onRemoveMember={onRemoveMember}
+        onLeaveGroup={onLeaveGroup}
+        currentUserId={currentUserId}
       />
 
       {/* Message List: Danh sách tin nhắn & cuộn tải thêm */}

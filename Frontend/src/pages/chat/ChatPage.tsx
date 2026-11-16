@@ -43,6 +43,11 @@ export const ChatPage: React.FC = () => {
     handleEditMessage,
     handleDeleteMessage,
     handleDeleteConversation,
+    handleCreateGroup,
+    handleUpdateGroupName,
+    handleAddGroupMembers,
+    handleRemoveGroupMember,
+    handleLeaveGroup,
     callState,
     callSession,
     localStream,
@@ -73,7 +78,7 @@ export const ChatPage: React.FC = () => {
 
       {/* 2. Không gian làm việc Chat */}
       <div className={`chat-workspace ${activeConversationId ? 'has-active-chat' : ''}`}>
-        {/* Left Sidebar: Danh sách chat và tìm kiếm người dùng */}
+        {/* Left Sidebar: Danh sách chat (1-1 & Nhóm), tìm kiếm và nút tạo nhóm */}
         <ChatSidebar
           conversations={conversations}
           isLoadingConversations={isLoadingConversations}
@@ -83,6 +88,8 @@ export const ChatPage: React.FC = () => {
             selectConversation(convId, selectedUser);
           }}
           onlineUserIds={onlineUserIds}
+          onCreateGroup={handleCreateGroup}
+          currentUserId={currentUserId}
         />
 
         {/* Right Section: Khung Chat đang hoạt động hoặc Màn hình chờ */}
@@ -109,6 +116,10 @@ export const ChatPage: React.FC = () => {
             onEditMessage={handleEditMessage}
             onDeleteMessage={handleDeleteMessage}
             onSendMessage={handleSendMessage}
+            onUpdateGroupName={handleUpdateGroupName}
+            onAddMembers={handleAddGroupMembers}
+            onRemoveMember={handleRemoveGroupMember}
+            onLeaveGroup={handleLeaveGroup}
           />
         ) : (
           <ChatEmptyState />

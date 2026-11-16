@@ -102,6 +102,21 @@ export function useConversations(currentUserId?: number) {
     [fetchConversations]
   );
 
+  // Thêm một cuộc hội thoại mới vào danh sách
+  const addConversation = useCallback((newConv: Conversation) => {
+    setConversations((prev) => {
+      if (prev.some((c) => c.id === newConv.id)) return prev;
+      return [newConv, ...prev];
+    });
+  }, []);
+
+  // Cập nhật thông tin cuộc hội thoại (ví dụ: đổi tên nhóm, thêm thành viên)
+  const updateConversation = useCallback((updatedConv: Conversation) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === updatedConv.id ? { ...c, ...updatedConv } : c))
+    );
+  }, []);
+
   // Xóa cuộc hội thoại khỏi danh sách Sidebar
   const removeConversation = useCallback(
     (conversationId: number) => {
@@ -123,6 +138,8 @@ export function useConversations(currentUserId?: number) {
     fetchConversations,
     selectConversation,
     updateLastMessage,
+    addConversation,
+    updateConversation,
     removeConversation,
   };
 }

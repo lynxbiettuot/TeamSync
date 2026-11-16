@@ -1,19 +1,16 @@
 package com.springrest.backend.controller.chat;
 
+import com.springrest.backend.dto.chat.request.EditMessageRequest;
 import com.springrest.backend.dto.chat.response.ChatMessageResponse;
-import com.springrest.backend.entity.Message;
 import com.springrest.backend.service.chat.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -51,6 +48,42 @@ public class MessageController {
         }catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{messageId}")
+    public ResponseEntity<?> editMessage(
+            @PathVariable Integer messageId,
+            @RequestBody EditMessageRequest request
+    ) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Integer currentUserId = Integer.parseInt(auth.getName());
+
+        try {
+            ChatMessageResponse response = messageService.editMessage(currentUserId, messageId, request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{messageId}")
+    public ResponseEntity<?> deleteMessage(
+            @PathVariable Integer messageId,
+            @RequestParam(required = false) Integer receiverId
+    ) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Integer currentUserId = Integer.parseInt(auth.getName());
+
+        try {
+            messageService.deleteMessage(currentUserId, messageId, receiverId);
+            return ResponseEntity.ok(Map.of("message", "Đã thu hồi tin nhắn thành công", "messageId", messageId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 }
