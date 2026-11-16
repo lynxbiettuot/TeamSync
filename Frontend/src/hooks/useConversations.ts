@@ -1,3 +1,4 @@
+// Hook quản lý danh sách cuộc hội thoại, giải mã E2EE tin nhắn cuối và chọn phòng chat
 import { useState, useEffect, useCallback } from 'react';
 import { chatService } from '../services/chatService';
 import { e2eeService } from '../services/e2eeService';
@@ -58,15 +59,17 @@ export function useConversations(currentUserId?: number) {
     fetchConversations();
   }, [fetchConversations]);
 
-  // Chọn cuộc hội thoại
+  // Chọn cuộc hội thoại (truyền null để bỏ chọn và quay về danh sách trên mobile)
   const selectConversation = useCallback(
-    (conversationId: number, otherUser?: ChatUser) => {
+    (conversationId: number | null, otherUser?: ChatUser) => {
       setActiveConversationId(conversationId);
       if (otherUser) {
         setActiveChatUser(otherUser);
-      } else {
+      } else if (conversationId) {
         const found = conversations.find((c) => c.id === conversationId);
         setActiveChatUser(found?.otherUser || null);
+      } else {
+        setActiveChatUser(null);
       }
     },
     [conversations]

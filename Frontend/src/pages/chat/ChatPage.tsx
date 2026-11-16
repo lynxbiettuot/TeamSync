@@ -1,5 +1,6 @@
 // src/pages/chat/ChatPage.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+// Trang chính quản lý Chat: hội thoại, tin nhắn E2EE, thông báo, presence và cuộc gọi Video/Thoại WebRTC
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { e2eeService } from '../../services/e2eeService';
 import { useConversations } from '../../hooks/useConversations';
@@ -7,14 +8,18 @@ import { useChatPresence } from '../../hooks/useChatPresence';
 import { useChatNotifications } from '../../hooks/useChatNotifications';
 import { useChatMessages } from '../../hooks/useChatMessages';
 import { useChatWebSocket } from '../../hooks/useChatWebSocket';
+import { useWebRTC } from '../../hooks/useWebRTC';
 import { ChatSidebar } from '../../components/chat/ChatSidebar/ChatSidebar';
 import { ChatHeader } from '../../components/chat/ChatHeader/ChatHeader';
 import { MessageList } from '../../components/chat/MessageList/MessageList';
 import { MessageInput } from '../../components/chat/MessageInput/MessageInput';
 import { NotificationBell } from '../../components/chat/Notification/NotificationBell';
 import { NotificationToast } from '../../components/chat/Notification/NotificationToast';
+import { IncomingCallDialog } from '../../components/chat/VideoCall/IncomingCallDialog';
+import { VideoCallModal } from '../../components/chat/VideoCall/VideoCallModal';
 import './ChatPage.css';
 import type { Message, SendMessagePayload, ReactType } from '../../types/chat.types';
+import type { CallSignalPayload } from '../../types/call.types';
 
 export const ChatPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -128,17 +133,47 @@ export const ChatPage: React.FC = () => {
     [activeConversationId, activeChatUser, appendMessage, conversations, currentUserId, updateLastMessage]
   );
 
-  // 7. Khởi tạo WebSocket STOMP
-  const { isConnected, sendMessage, sendReaction } = useChatWebSocket({
+  // 7. Khởi tạo WebSocket STOMP & WebRTC
+  const handleCallSignalRef = useRef<(signal: CallSignalPayload) => void>(() => {});
+
+  const { isConnected, sendMessage, sendReaction, sendCallSignal } = useChatWebSocket({
     onMessageReceived: handleIncomingMessage,
     onReactionReceived: (event) => {
       updateReaction(event.messageId, event.reaction);
     },
     onPresenceReceived: handlePresenceReceived,
     onNotificationReceived: handleNotificationReceived,
+    onCallSignalReceived: (signal) => {
+      handleCallSignalRef.current(signal);
+    },
   });
 
-  // 8. Gửi tin nhắn qua STOMP (/app/chat.send) với E2EE
+  // 8. Quản lý trạng thái và kết nối cuộc gọi WebRTC 1-1
+  const {
+    callState,
+    callSession,
+    localStream,
+    remoteStream,
+    isMuted,
+    isCameraOff,
+    callDuration,
+    startCall,
+    acceptCall,
+    rejectCall,
+    endCall,
+    toggleMute,
+    toggleCamera,
+    handleIncomingSignal,
+  } = useWebRTC({
+    currentUserId,
+    sendCallSignal,
+  });
+
+  useEffect(() => {
+    handleCallSignalRef.current = handleIncomingSignal;
+  }, [handleIncomingSignal]);
+
+  // 9. Gửi tin nhắn qua STOMP (/app/chat.send) với E2EE
   const handleSendMessage = async (content: string) => {
     if (!activeConversationId || !currentUserId) return;
 
@@ -255,11 +290,11 @@ export const ChatPage: React.FC = () => {
       </header>
 
       {/* Main Chat Workspace */}
-      <div className="chat-workspace">
+      <div className={`chat-workspace ${activeConversationId ? 'has-active-chat' : ''}`}>
         {/* Left Sidebar: Danh sách chat và tìm kiếm người dùng */}
         <ChatSidebar
           conversations={conversations}
-          isLoading={isLoadingConversations}
+          isLoadingConversations={isLoadingConversations}
           activeConversationId={activeConversationId}
           onSelectConversation={(convId, user) => {
             setReplyingMessage(null);
@@ -272,11 +307,14 @@ export const ChatPage: React.FC = () => {
         <main className="chat-main">
           {activeConversationId ? (
             <>
-              {/* Header: Tên và Avatar người đang chat */}
+              {/* Header: Tên và Avatar người đang chat & Nút Gọi */}
               <ChatHeader
                 user={activeChatUser || activeConv?.otherUser}
                 conversationName={activeConv?.name}
                 isOnline={isChatUserOnline}
+                isInCall={callState !== 'IDLE'}
+                onBack={() => selectConversation(null)}
+                onStartCall={startCall}
               />
 
               {/* Message List: Danh sách tin nhắn & cuộn tải thêm */}
@@ -318,6 +356,30 @@ export const ChatPage: React.FC = () => {
         notification={toastNotification}
         onClick={handleNotificationClick}
         onDismiss={handleDismissToast}
+      />
+
+      {/* Hộp thoại khi có cuộc gọi đến */}
+      {callState === 'INCOMING' && callSession && (
+        <IncomingCallDialog
+          caller={callSession.partner}
+          callType={callSession.callType}
+          onAccept={acceptCall}
+          onReject={rejectCall}
+        />
+      )}
+
+      {/* Màn hình hiển thị cuộc gọi Video/Thoại */}
+      <VideoCallModal
+        callState={callState}
+        callSession={callSession}
+        localStream={localStream}
+        remoteStream={remoteStream}
+        isMuted={isMuted}
+        isCameraOff={isCameraOff}
+        callDuration={callDuration}
+        onToggleMute={toggleMute}
+        onToggleCamera={toggleCamera}
+        onHangup={endCall}
       />
     </div>
   );

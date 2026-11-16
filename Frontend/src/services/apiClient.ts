@@ -1,10 +1,9 @@
-// src/services/apiClient.ts
-// HTTP client bảo mật: Access Token lưu thuần túy trong Memory (không dùng localStorage)
+// src/services/apiClient.ts - HTTP client bảo mật: Access Token trong Memory, auto refresh, dùng Base URL tương đối qua Vite Proxy
 // Tự động đính kèm HttpOnly Refresh Token Cookie thông qua credentials: 'include'
 // Tự động gửi Header Authorization: Bearer <accessToken>
 // Tự động gọi POST /api/auth/refresh khi gặp lỗi 401 và retry request ban đầu
 
-export const BASE_API_URL = 'http://localhost:8080';
+export const BASE_API_URL = '';
 
 // ===== IN-MEMORY TOKEN STORE =====
 let inMemoryAccessToken: string | null = null;
