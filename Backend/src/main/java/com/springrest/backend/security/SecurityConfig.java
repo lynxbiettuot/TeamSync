@@ -1,3 +1,4 @@
+// Cấu hình Spring Security: xác thực JWT, phân quyền endpoint và hỗ trợ CORS cho mọi Origin
 package com.springrest.backend.security;
 
 import lombok.RequiredArgsConstructor;
@@ -31,21 +32,22 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(Customizer.withDefaults()) // để chế độ này sẽ tìm bean cấu hình CorsConfigurationSource, nếu không thấy nó sẽ từ chối mọi cross origin
+                .cors(Customizer.withDefaults()) // để chế độ này sẽ tìm bean cấu hình CorsConfigurationSource, nếu
+                                                 // không thấy nó sẽ từ chối mọi cross origin
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/ws/**").permitAll() // add more origin urls
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        // Dùng setAllowedOriginPatterns("*") hỗ trợ kết nối từ IP LAN (điện thoại) và
+        // tunnel với allowCredentials(true)
+        configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

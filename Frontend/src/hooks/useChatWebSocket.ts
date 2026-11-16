@@ -1,4 +1,5 @@
 // src/hooks/useChatWebSocket.ts
+// Hook quản lý kết nối STOMP WebSocket: tin nhắn, reaction, presence, notification và báo hiệu cuộc gọi WebRTC
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Client, type IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
@@ -11,12 +12,14 @@ import type {
   UserPresenceEvent,
   NotificationItem,
 } from '../types/chat.types';
+import type { CallSignalPayload } from '../types/call.types';
 
 interface UseChatWebSocketProps {
   onMessageReceived: (message: Message) => void;
   onReactionReceived?: (event: ReactionWebSocketEvent) => void;
   onPresenceReceived?: (event: UserPresenceEvent) => void;
   onNotificationReceived?: (notification: NotificationItem) => void;
+  onCallSignalReceived?: (signal: CallSignalPayload) => void;
 }
 
 export function useChatWebSocket({
@@ -24,6 +27,7 @@ export function useChatWebSocket({
   onReactionReceived,
   onPresenceReceived,
   onNotificationReceived,
+  onCallSignalReceived,
 }: UseChatWebSocketProps) {
   const [isConnected, setIsConnected] = useState(false);
   const stompClientRef = useRef<Client | null>(null);
@@ -31,6 +35,7 @@ export function useChatWebSocket({
   const onReactionReceivedRef = useRef(onReactionReceived);
   const onPresenceReceivedRef = useRef(onPresenceReceived);
   const onNotificationReceivedRef = useRef(onNotificationReceived);
+  const onCallSignalReceivedRef = useRef(onCallSignalReceived);
 
   // Giữ ref callback mới nhất tránh re-subscribe không cần thiết
   useEffect(() => {
@@ -38,14 +43,15 @@ export function useChatWebSocket({
     onReactionReceivedRef.current = onReactionReceived;
     onPresenceReceivedRef.current = onPresenceReceived;
     onNotificationReceivedRef.current = onNotificationReceived;
-  }, [onMessageReceived, onReactionReceived, onPresenceReceived, onNotificationReceived]);
+    onCallSignalReceivedRef.current = onCallSignalReceived;
+  }, [onMessageReceived, onReactionReceived, onPresenceReceived, onNotificationReceived, onCallSignalReceived]);
 
   useEffect(() => {
     const token = tokenStorage.get();
 
     const client = new Client({
-      // Dùng SockJS làm webSocketFactory để tương thích cấu hình Spring Boot withSockJS()
-      webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+      // Dùng SockJS làm webSocketFactory kết nối tương đối qua Vite Proxy (/ws)
+      webSocketFactory: () => new SockJS('/ws'),
       connectHeaders: {
         //STOM frame connect
         Authorization: token ? `Bearer ${token}` : '',
@@ -109,6 +115,18 @@ export function useChatWebSocket({
             console.error('[WebSocket] Lỗi parse notification event:', err);
           }
         });
+
+        // 4. Lắng nghe tín hiệu WebRTC Call (Offer/Answer/Candidate/End) tại /user/queue/call
+        client.subscribe('/user/queue/call', (stompMessage: IMessage) => {
+          try {
+            const signal = JSON.parse(stompMessage.body) as CallSignalPayload;
+            if (onCallSignalReceivedRef.current && signal && signal.type) {
+              onCallSignalReceivedRef.current(signal);
+            }
+          } catch (err) {
+            console.error('[WebSocket] Lỗi parse call signal event:', err);
+          }
+        });
       },
       onDisconnect: () => {
         setIsConnected(false);
@@ -158,10 +176,26 @@ export function useChatWebSocket({
     return false;
   }, []);
 
+  /**
+   * Publish tín hiệu WebRTC tới endpoint /app/call.signal
+   */
+  const sendCallSignal = useCallback((payload: CallSignalPayload): boolean => {
+    if (stompClientRef.current && stompClientRef.current.connected) {
+      stompClientRef.current.publish({
+        destination: '/app/call.signal',
+        body: JSON.stringify(payload),
+      });
+      return true;
+    }
+    console.warn('[WebSocket] Chưa kết nối, không thể gửi tín hiệu gọi');
+    return false;
+  }, []);
+
   return {
     isConnected,
     sendMessage,
     sendReaction,
+    sendCallSignal,
   };
 }
 

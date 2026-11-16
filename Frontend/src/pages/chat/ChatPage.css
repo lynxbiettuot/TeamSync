@@ -159,3 +159,36 @@
   margin: 0;
 }
 
+/* ==========================================================================
+   Responsive Mobile (< 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .chat-navbar {
+    padding: 0 12px;
+  }
+
+  .chat-brand-name {
+    display: none;
+  }
+
+  .chat-user-name {
+    display: none;
+  }
+
+  .chat-sidebar {
+    width: 100% !important;
+  }
+
+  .chat-workspace.has-active-chat .chat-sidebar {
+    display: none !important;
+  }
+
+  .chat-workspace:not(.has-active-chat) .chat-main {
+    display: none !important;
+  }
+
+  .chat-main {
+    width: 100% !important;
+  }
+}
+

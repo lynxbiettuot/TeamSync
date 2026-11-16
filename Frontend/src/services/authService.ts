@@ -1,8 +1,9 @@
+// Service xác thực người dùng (Login, Logout, OTP, Refresh Token) với Base URL tương đối
 import { apiClient } from './apiClient';
 import type { AuthApiResponse, LoginResponseData } from '../types/auth.types';
 
-// Thay URL backend Spring Boot tại đây
-const BASE_URL = 'http://localhost:8080/api/auth';
+// Dùng đường dẫn tương đối để chuyển tiếp qua Vite Proxy
+const BASE_URL = '/api/auth';
 
 export const authService = {
   // POST /api/auth/login — Đăng nhập (HttpOnly Refresh Token cookie tự lưu bởi browser)
