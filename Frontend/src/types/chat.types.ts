@@ -1,6 +1,7 @@
 // src/types/chat.types.ts
 
 export type ConversationType = 'INDIVIDUAL' | 'GROUP';
+export type GroupRoleType = 'GROUP_ADMIN' | 'GROUP_MEMBER';
 export type MessageType = 'TEXT' | 'IMAGE' | 'FILE';
 
 /** Thông tin người dùng trong chat */
@@ -13,9 +14,20 @@ export interface ChatUser {
   publicKey?: string | null;
 }
 
+/** Thành viên trong nhóm chat */
+export interface GroupMember {
+  userId: number;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: GroupRoleType;
+  joinedAt?: string;
+}
+
 /** Cuộc hội thoại ở Sidebar */
 export interface Conversation {
   id: number;
+  type?: ConversationType;
   name?: string | null;
   conversationType?: ConversationType;
   conversation_type?: ConversationType;
@@ -28,6 +40,8 @@ export interface Conversation {
   lastMessage?: string | null;
   last_message?: string | null;
   otherUser?: ChatUser;
+  members?: GroupMember[];
+  currentUserRole?: GroupRoleType;
   unreadCount?: number;
 }
 
@@ -108,6 +122,36 @@ export interface MessageDeleteEvent {
 export interface ConversationDeleteEvent {
   type: 'CONVERSATION_DELETE';
   conversationId: number;
+}
+
+/** Sự kiện WebSocket khi có cuộc hội thoại mới được tạo */
+export interface ConversationCreateEvent {
+  type: 'CONVERSATION_CREATE';
+  conversation: Conversation;
+}
+
+/** Sự kiện WebSocket khi thông tin cuộc hội thoại thay đổi */
+export interface ConversationUpdateEvent {
+  type: 'CONVERSATION_UPDATE';
+  conversation: Conversation;
+}
+
+/** Payload tạo nhóm chat */
+export interface CreateGroupPayload {
+  name: string;
+  avatarUrl?: string;
+  memberIds: number[];
+}
+
+/** Payload cập nhật thông tin nhóm */
+export interface UpdateGroupPayload {
+  name?: string;
+  avatarUrl?: string;
+}
+
+/** Payload thêm thành viên vào nhóm */
+export interface AddGroupMembersPayload {
+  memberIds: number[];
 }
 
 /** Sự kiện WebSocket khi có thay đổi trạng thái Online / Offline (/topic/presence) */

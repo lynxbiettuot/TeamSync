@@ -1,7 +1,9 @@
 // src/components/chat/ChatSidebar/ChatSidebar.tsx
+// Thanh bên Sidebar: tìm kiếm người dùng, danh sách hội thoại (1-1 & Nhóm) và nút tạo nhóm chat mới
 import React, { useState, useEffect } from 'react';
 import type { Conversation, ChatUser } from '../../../types/chat.types';
 import { ConversationItem } from '../ConversationItem/ConversationItem';
+import { CreateGroupModal } from '../GroupModal/CreateGroupModal';
 import { chatService } from '../../../services/chatService';
 import './ChatSidebar.css';
 
@@ -11,6 +13,8 @@ interface ChatSidebarProps {
   onSelectConversation: (conversationId: number, user?: ChatUser) => void;
   isLoadingConversations?: boolean;
   onlineUserIds?: Set<number>;
+  onCreateGroup?: (name: string, memberIds: number[]) => Promise<void>;
+  currentUserId?: number;
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -19,11 +23,14 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onSelectConversation,
   isLoadingConversations = false,
   onlineUserIds = new Set(),
+  onCreateGroup,
+  currentUserId,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ChatUser[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isCreatingDirect, setIsCreatingDirect] = useState(false);
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
 
   // Debounce tìm kiếm người dùng qua GET /api/users/search?q={keyword}
   useEffect(() => {
@@ -85,7 +92,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             onChange={(e) => setSearchQuery(e.target.value)}
             className="chat-search-input"
           />
-          {/* Icon kính lúp */}
           <span className="chat-search-icon">🔍</span>
         </div>
 
@@ -117,7 +123,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         u.displayName?.charAt(0).toUpperCase() || 'U'
                       )}
 
-                      {/* Chấm tròn xanh nếu đang Online */}
                       {isUserOnline && <span className="chat-search-online-dot" />}
                     </div>
                     <div className="chat-search-meta">
@@ -132,16 +137,27 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         )}
       </div>
 
-      {/* Tiêu đề danh sách */}
-      <div className="chat-sidebar-heading">Đoạn chat gần đây</div>
+      {/* Tiêu đề danh sách và Nút tạo nhóm */}
+      <div className="chat-sidebar-heading-row">
+        <div className="chat-sidebar-heading">Đoạn chat gần đây</div>
+        {onCreateGroup && (
+          <button
+            type="button"
+            className="chat-sidebar-create-group-btn"
+            onClick={() => setIsCreateGroupOpen(true)}
+            title="Tạo nhóm trò chuyện mới"
+          >
+            <span>+</span> Tạo nhóm
+          </button>
+        )}
+      </div>
 
       {/* Danh sách hội thoại gần đây */}
       <div className="chat-sidebar-list">
         {isLoadingConversations ? (
           <div className="chat-sidebar-loading">Đang tải danh sách...</div>
         ) : sortedConversations.length === 0 ? (
-          /* Trường hợp chưa nhắn với ai */
-          <div className="chat-sidebar-empty">No conversation available</div>
+          <div className="chat-sidebar-empty">Chưa có cuộc trò chuyện nào</div>
         ) : (
           sortedConversations.map((conv) => {
             const otherUserId = conv.otherUser?.id;
@@ -159,6 +175,16 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           })
         )}
       </div>
+
+      {/* Modal tạo nhóm */}
+      {onCreateGroup && (
+        <CreateGroupModal
+          isOpen={isCreateGroupOpen}
+          onClose={() => setIsCreateGroupOpen(false)}
+          onCreateGroup={onCreateGroup}
+          currentUserId={currentUserId}
+        />
+      )}
     </aside>
   );
 };

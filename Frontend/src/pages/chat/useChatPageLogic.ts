@@ -26,6 +26,8 @@ export function useChatPageLogic() {
     activeChatUser,
     selectConversation,
     updateLastMessage,
+    addConversation,
+    updateConversation,
     removeConversation,
   } = useConversations(currentUserId);
 
@@ -145,6 +147,12 @@ export function useChatPageLogic() {
     },
     onConversationDeleted: (event) => {
       removeConversation(event.conversationId);
+    },
+    onConversationCreated: (event) => {
+      addConversation(event.conversation);
+    },
+    onConversationUpdated: (event) => {
+      updateConversation(event.conversation);
     },
     onPresenceReceived: handlePresenceReceived,
     onNotificationReceived: handleNotificationReceived,
@@ -315,6 +323,59 @@ export function useChatPageLogic() {
     }
   };
 
+  // 14. Quản lý Nhóm trò chuyện (Group Chat CRUD)
+  const handleCreateGroup = async (name: string, memberIds: number[]) => {
+    try {
+      const newGroup = await chatService.createGroup({ name, memberIds });
+      addConversation(newGroup);
+      selectConversation(newGroup.id);
+    } catch (err) {
+      console.error('Lỗi khi tạo nhóm:', err);
+      throw err;
+    }
+  };
+
+  const handleUpdateGroupName = async (conversationId: number, newName: string) => {
+    try {
+      const updated = await chatService.updateGroupInfo(conversationId, { name: newName });
+      updateConversation(updated);
+    } catch (err) {
+      console.error('Lỗi khi đổi tên nhóm:', err);
+      throw err;
+    }
+  };
+
+  const handleAddGroupMembers = async (conversationId: number, memberIds: number[]) => {
+    try {
+      const updated = await chatService.addGroupMembers(conversationId, memberIds);
+      updateConversation(updated);
+    } catch (err) {
+      console.error('Lỗi khi thêm thành viên:', err);
+      throw err;
+    }
+  };
+
+  const handleRemoveGroupMember = async (conversationId: number, targetUserId: number) => {
+    try {
+      await chatService.removeGroupMember(conversationId, targetUserId);
+      const updated = await chatService.getConversationDetails(conversationId);
+      updateConversation(updated);
+    } catch (err) {
+      console.error('Lỗi khi xóa thành viên:', err);
+      throw err;
+    }
+  };
+
+  const handleLeaveGroup = async (conversationId: number) => {
+    try {
+      await chatService.leaveGroup(conversationId);
+      removeConversation(conversationId);
+    } catch (err) {
+      console.error('Lỗi khi rời nhóm:', err);
+      throw err;
+    }
+  };
+
   const activeConv = conversations.find((c) => c.id === activeConversationId);
   const otherChatUserId = activeChatUser?.id || activeConv?.otherUser?.id;
   const isChatUserOnline = otherChatUserId !== undefined && onlineUserIds.has(otherChatUserId);
@@ -351,6 +412,11 @@ export function useChatPageLogic() {
     handleEditMessage,
     handleDeleteMessage,
     handleDeleteConversation,
+    handleCreateGroup,
+    handleUpdateGroupName,
+    handleAddGroupMembers,
+    handleRemoveGroupMember,
+    handleLeaveGroup,
     callState,
     callSession,
     localStream,

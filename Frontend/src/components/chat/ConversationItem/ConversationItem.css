@@ -82,6 +82,19 @@
   white-space: nowrap;
 }
 
+.chat-conv-group-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #4f46e5;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
 .chat-conv-item--active .chat-conv-name {
   font-weight: 700;
 }

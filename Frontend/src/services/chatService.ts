@@ -145,6 +145,58 @@ export const chatService = {
   async deleteConversation(conversationId: number): Promise<void> {
     await apiClient.delete(`/api/conversations/${conversationId}`);
   },
+
+  /**
+   * Tạo nhóm chat mới
+   * POST /api/conversations/group
+   */
+  async createGroup(payload: { name: string; avatarUrl?: string; memberIds: number[] }): Promise<Conversation> {
+    const res = await apiClient.post<unknown>('/api/conversations/group', payload);
+    return extractData<Conversation>(res);
+  },
+
+  /**
+   * Lấy chi tiết cuộc hội thoại (thông tin nhóm, danh sách thành viên)
+   * GET /api/conversations/{conversationId}
+   */
+  async getConversationDetails(conversationId: number): Promise<Conversation> {
+    const res = await apiClient.get<unknown>(`/api/conversations/${conversationId}`);
+    return extractData<Conversation>(res);
+  },
+
+  /**
+   * Cập nhật thông tin nhóm (chỉ ADMIN)
+   * PUT /api/conversations/group/{conversationId}
+   */
+  async updateGroupInfo(conversationId: number, payload: { name?: string; avatarUrl?: string }): Promise<Conversation> {
+    const res = await apiClient.put<unknown>(`/api/conversations/group/${conversationId}`, payload);
+    return extractData<Conversation>(res);
+  },
+
+  /**
+   * Thêm thành viên vào nhóm (chỉ ADMIN)
+   * POST /api/conversations/group/{conversationId}/members
+   */
+  async addGroupMembers(conversationId: number, memberIds: number[]): Promise<Conversation> {
+    const res = await apiClient.post<unknown>(`/api/conversations/group/${conversationId}/members`, { memberIds });
+    return extractData<Conversation>(res);
+  },
+
+  /**
+   * Xóa thành viên khỏi nhóm (chỉ ADMIN)
+   * DELETE /api/conversations/group/{conversationId}/members/{targetUserId}
+   */
+  async removeGroupMember(conversationId: number, targetUserId: number): Promise<void> {
+    await apiClient.delete(`/api/conversations/group/${conversationId}/members/${targetUserId}`);
+  },
+
+  /**
+   * Rời khỏi nhóm
+   * POST /api/conversations/group/{conversationId}/leave
+   */
+  async leaveGroup(conversationId: number): Promise<void> {
+    await apiClient.post(`/api/conversations/group/${conversationId}/leave`);
+  },
 };
 
 export default chatService;
