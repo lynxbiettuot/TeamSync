@@ -56,6 +56,8 @@ export interface Message {
   created_at?: string;
   updatedAt?: string;
   updated_at?: string;
+  isDeleted?: boolean;
+  is_deleted?: boolean;
   replyTo?: ReplyMessage | null;
   reply_to?: ReplyMessage | null;
   reactions?: MessageReaction[];
@@ -86,6 +88,26 @@ export interface ReactionWebSocketEvent {
   conversationId: number;
   messageId: number;
   reaction: MessageReaction;
+}
+
+/** Sự kiện WebSocket khi tin nhắn được chỉnh sửa */
+export interface MessageEditEvent {
+  type: 'MESSAGE_EDIT';
+  conversationId: number;
+  message: Message;
+}
+
+/** Sự kiện WebSocket khi tin nhắn bị thu hồi */
+export interface MessageDeleteEvent {
+  type: 'MESSAGE_DELETE';
+  conversationId: number;
+  messageId: number;
+}
+
+/** Sự kiện WebSocket khi cuộc hội thoại bị xóa */
+export interface ConversationDeleteEvent {
+  type: 'CONVERSATION_DELETE';
+  conversationId: number;
 }
 
 /** Sự kiện WebSocket khi có thay đổi trạng thái Online / Offline (/topic/presence) */
