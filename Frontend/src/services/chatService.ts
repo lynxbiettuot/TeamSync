@@ -1,10 +1,11 @@
-// src/services/chatService.ts
+// Service giao tiếp REST API chat: lấy hội thoại, tin nhắn, sửa/thu hồi tin nhắn, xóa hội thoại
 import { apiClient } from './apiClient';
 import type {
   Conversation,
   ChatUser,
   DirectConversationResponse,
   MessagesPaginationResponse,
+  Message,
 } from '../types/chat.types';
 
 // Helper trích xuất data từ các dạng ApiResponse khác nhau của Spring Boot:
@@ -111,6 +112,38 @@ export const chatService = {
       console.error('Lỗi khi lấy danh sách user online:', err);
       return [];
     }
+  },
+
+  /**
+   * Chỉnh sửa nội dung tin nhắn
+   * PUT /api/messages/{messageId}
+   */
+  async editMessage(messageId: number, newContent: string, receiverId?: number): Promise<Message> {
+    const res = await apiClient.put<unknown>(`/api/messages/${messageId}`, {
+      newContent,
+      receiverId,
+    });
+    return extractData<Message>(res);
+  },
+
+  /**
+   * Thu hồi tin nhắn
+   * DELETE /api/messages/{messageId}?receiverId={receiverId}
+   */
+  async deleteMessage(messageId: number, receiverId?: number): Promise<void> {
+    let url = `/api/messages/${messageId}`;
+    if (receiverId) {
+      url += `?receiverId=${receiverId}`;
+    }
+    await apiClient.delete(url);
+  },
+
+  /**
+   * Xóa toàn bộ cuộc hội thoại
+   * DELETE /api/conversations/{conversationId}
+   */
+  async deleteConversation(conversationId: number): Promise<void> {
+    await apiClient.delete(`/api/conversations/${conversationId}`);
   },
 };
 

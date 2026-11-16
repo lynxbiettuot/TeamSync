@@ -277,3 +277,89 @@
   margin-left: 4px;
 }
 
+/* ==========================================================================
+   Tin nhắn đã thu hồi, đã chỉnh sửa và form chỉnh sửa inline
+   ========================================================================== */
+.chat-msg-bubble--deleted {
+  font-style: italic;
+  opacity: 0.75;
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  border: 1px dashed #cbd5e1 !important;
+}
+
+.chat-msg-edited {
+  font-size: 11px;
+  opacity: 0.8;
+  margin-left: 6px;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.chat-msg-edit-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.chat-msg-edit-input {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.chat-msg-row--other .chat-msg-edit-input {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+}
+
+.chat-msg-edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.chat-msg-edit-btn {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.chat-msg-edit-btn--save {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.chat-msg-edit-btn--save:hover {
+  background: #16a34a;
+}
+
+.chat-msg-edit-btn--cancel {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.chat-msg-row--other .chat-msg-edit-btn--cancel {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.chat-action-btn--delete:hover {
+  color: #ef4444;
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+

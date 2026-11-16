@@ -1,0 +1,112 @@
+/* Thanh điều hướng ChatNavbar trên đầu trang: thương hiệu, trạng thái kết nối, chuông thông báo và menu user */
+.chat-navbar {
+  height: 60px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+
+.chat-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-brand-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.chat-brand-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.chat-navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.chat-ws-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.chat-ws-status--online {
+  color: #16a34a;
+}
+
+.chat-ws-status--offline {
+  color: #dc2626;
+}
+
+.chat-ws-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.chat-ws-status--online .chat-ws-dot {
+  background: #16a34a;
+}
+
+.chat-ws-status--offline .chat-ws-dot {
+  background: #dc2626;
+}
+
+.chat-user-menu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-user-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+}
+
+.chat-logout-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #64748b;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.chat-logout-btn:hover {
+  background: #e2e8f0;
+}
+
+@media (max-width: 768px) {
+  .chat-navbar {
+    padding: 0 12px;
+  }
+
+  .chat-brand-name {
+    display: none;
+  }
+
+  .chat-user-name {
+    display: none;
+  }
+}

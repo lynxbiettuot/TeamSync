@@ -9,6 +9,9 @@ import type {
   SendMessagePayload,
   SendReactionPayload,
   ReactionWebSocketEvent,
+  MessageEditEvent,
+  MessageDeleteEvent,
+  ConversationDeleteEvent,
   UserPresenceEvent,
   NotificationItem,
 } from '../types/chat.types';
@@ -17,6 +20,9 @@ import type { CallSignalPayload } from '../types/call.types';
 interface UseChatWebSocketProps {
   onMessageReceived: (message: Message) => void;
   onReactionReceived?: (event: ReactionWebSocketEvent) => void;
+  onMessageEdited?: (event: MessageEditEvent) => void;
+  onMessageDeleted?: (event: MessageDeleteEvent) => void;
+  onConversationDeleted?: (event: ConversationDeleteEvent) => void;
   onPresenceReceived?: (event: UserPresenceEvent) => void;
   onNotificationReceived?: (notification: NotificationItem) => void;
   onCallSignalReceived?: (signal: CallSignalPayload) => void;
@@ -25,6 +31,9 @@ interface UseChatWebSocketProps {
 export function useChatWebSocket({
   onMessageReceived,
   onReactionReceived,
+  onMessageEdited,
+  onMessageDeleted,
+  onConversationDeleted,
   onPresenceReceived,
   onNotificationReceived,
   onCallSignalReceived,
@@ -33,6 +42,9 @@ export function useChatWebSocket({
   const stompClientRef = useRef<Client | null>(null);
   const onMessageReceivedRef = useRef(onMessageReceived);
   const onReactionReceivedRef = useRef(onReactionReceived);
+  const onMessageEditedRef = useRef(onMessageEdited);
+  const onMessageDeletedRef = useRef(onMessageDeleted);
+  const onConversationDeletedRef = useRef(onConversationDeleted);
   const onPresenceReceivedRef = useRef(onPresenceReceived);
   const onNotificationReceivedRef = useRef(onNotificationReceived);
   const onCallSignalReceivedRef = useRef(onCallSignalReceived);
@@ -41,10 +53,22 @@ export function useChatWebSocket({
   useEffect(() => {
     onMessageReceivedRef.current = onMessageReceived;
     onReactionReceivedRef.current = onReactionReceived;
+    onMessageEditedRef.current = onMessageEdited;
+    onMessageDeletedRef.current = onMessageDeleted;
+    onConversationDeletedRef.current = onConversationDeleted;
     onPresenceReceivedRef.current = onPresenceReceived;
     onNotificationReceivedRef.current = onNotificationReceived;
     onCallSignalReceivedRef.current = onCallSignalReceived;
-  }, [onMessageReceived, onReactionReceived, onPresenceReceived, onNotificationReceived, onCallSignalReceived]);
+  }, [
+    onMessageReceived,
+    onReactionReceived,
+    onMessageEdited,
+    onMessageDeleted,
+    onConversationDeleted,
+    onPresenceReceived,
+    onNotificationReceived,
+    onCallSignalReceived,
+  ]);
 
   useEffect(() => {
     const token = tokenStorage.get();
@@ -69,6 +93,18 @@ export function useChatWebSocket({
             if (parsed && parsed.type === 'REACTION') {
               if (onReactionReceivedRef.current) {
                 onReactionReceivedRef.current(parsed as ReactionWebSocketEvent);
+              }
+            } else if (parsed && parsed.type === 'MESSAGE_EDIT') {
+              if (onMessageEditedRef.current) {
+                onMessageEditedRef.current(parsed as MessageEditEvent);
+              }
+            } else if (parsed && parsed.type === 'MESSAGE_DELETE') {
+              if (onMessageDeletedRef.current) {
+                onMessageDeletedRef.current(parsed as MessageDeleteEvent);
+              }
+            } else if (parsed && parsed.type === 'CONVERSATION_DELETE') {
+              if (onConversationDeletedRef.current) {
+                onConversationDeletedRef.current(parsed as ConversationDeleteEvent);
               }
             } else {
               if (onMessageReceivedRef.current) {

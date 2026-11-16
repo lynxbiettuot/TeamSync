@@ -102,6 +102,16 @@ export function useConversations(currentUserId?: number) {
     [fetchConversations]
   );
 
+  // Xóa cuộc hội thoại khỏi danh sách Sidebar
+  const removeConversation = useCallback(
+    (conversationId: number) => {
+      setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+      setActiveConversationId((prevActive) => (prevActive === conversationId ? null : prevActive));
+      setActiveChatUser((prevUser) => (activeConversationId === conversationId ? null : prevUser));
+    },
+    [activeConversationId]
+  );
+
   return {
     conversations,
     setConversations,
@@ -113,6 +123,7 @@ export function useConversations(currentUserId?: number) {
     fetchConversations,
     selectConversation,
     updateLastMessage,
+    removeConversation,
   };
 }
 

@@ -1,0 +1,96 @@
+// Component hiển thị không gian chat đang hoạt động: Header đối thoại, danh sách tin nhắn và ô nhập liệu
+import React from 'react';
+import type { Message, ChatUser, Conversation, ReactType } from '../../../types/chat.types';
+import type { CallType } from '../../../types/call.types';
+import { ChatHeader } from '../ChatHeader/ChatHeader';
+import { MessageList } from '../MessageList/MessageList';
+import { MessageInput } from '../MessageInput/MessageInput';
+import './ChatConversationView.css';
+
+interface ChatConversationViewProps {
+  activeConv?: Conversation;
+  activeChatUser?: ChatUser | null;
+  currentUserId?: number;
+  isOnline: boolean;
+  isInCall: boolean;
+  messages: Message[];
+  hasMore: boolean;
+  isLoadingInitial: boolean;
+  isLoadingMore: boolean;
+  chatContainerRef: React.RefObject<HTMLDivElement | null>;
+  replyingMessage: Message | null;
+  onBack: () => void;
+  onStartCall: (partner: ChatUser, type: CallType) => void;
+  onDeleteConversation: () => void;
+  onScrollToTop: () => void;
+  onReplyMessage: (message: Message) => void;
+  onCancelReply: () => void;
+  onReactMessage: (messageId: number, reactType: ReactType) => void;
+  onEditMessage: (messageId: number, newContent: string) => void;
+  onDeleteMessage: (messageId: number) => void;
+  onSendMessage: (content: string) => void;
+}
+
+export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
+  activeConv,
+  activeChatUser,
+  currentUserId,
+  isOnline,
+  isInCall,
+  messages,
+  hasMore,
+  isLoadingInitial,
+  isLoadingMore,
+  chatContainerRef,
+  replyingMessage,
+  onBack,
+  onStartCall,
+  onDeleteConversation,
+  onScrollToTop,
+  onReplyMessage,
+  onCancelReply,
+  onReactMessage,
+  onEditMessage,
+  onDeleteMessage,
+  onSendMessage,
+}) => {
+  return (
+    <main className="chat-main">
+      {/* Header: Tên và Avatar người đang chat & Nút Gọi */}
+      <ChatHeader
+        user={activeChatUser || activeConv?.otherUser}
+        conversationName={activeConv?.name}
+        isOnline={isOnline}
+        isInCall={isInCall}
+        onBack={onBack}
+        onStartCall={onStartCall}
+        onDeleteConversation={onDeleteConversation}
+      />
+
+      {/* Message List: Danh sách tin nhắn & cuộn tải thêm */}
+      <MessageList
+        messages={messages}
+        currentUserId={currentUserId}
+        hasMore={hasMore}
+        isLoadingInitial={isLoadingInitial}
+        isLoadingMore={isLoadingMore}
+        chatContainerRef={chatContainerRef}
+        onScrollToTop={onScrollToTop}
+        onReplyMessage={onReplyMessage}
+        onReactMessage={onReactMessage}
+        onEditMessage={onEditMessage}
+        onDeleteMessage={onDeleteMessage}
+      />
+
+      {/* Message Input: Ô soạn thảo và gửi tin nhắn */}
+      <MessageInput
+        onSendMessage={onSendMessage}
+        disabled={false}
+        replyingMessage={replyingMessage}
+        onCancelReply={onCancelReply}
+      />
+    </main>
+  );
+};
+
+export default ChatConversationView;

@@ -1,4 +1,4 @@
-// src/components/chat/MessageList/MessageList.tsx
+// Component danh sách tin nhắn: cuộn phân trang, render MessageItem và chuyển tiếp sự kiện sửa/thu hồi
 import React, { type UIEvent } from 'react';
 import type { Message, ReactType } from '../../../types/chat.types';
 import { MessageItem } from '../MessageItem/MessageItem';
@@ -14,6 +14,8 @@ interface MessageListProps {
   onScrollToTop: () => void;
   onReplyMessage?: (message: Message) => void;
   onReactMessage?: (messageId: number, reactType: ReactType) => void;
+  onEditMessage?: (messageId: number, newContent: string) => void;
+  onDeleteMessage?: (messageId: number) => void;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -26,6 +28,8 @@ export const MessageList: React.FC<MessageListProps> = ({
   onScrollToTop,
   onReplyMessage,
   onReactMessage,
+  onEditMessage,
+  onDeleteMessage,
 }) => {
   // Lắng nghe sự kiện scroll để tải thêm khi chạm đỉnh (top)
   const handleScroll = (e: UIEvent<HTMLDivElement>) => {
@@ -76,6 +80,8 @@ export const MessageList: React.FC<MessageListProps> = ({
             currentUserId={currentUserId}
             onReply={onReplyMessage}
             onReact={onReactMessage}
+            onEdit={onEditMessage}
+            onDelete={onDeleteMessage}
           />
         );
       })}

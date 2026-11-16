@@ -1,4 +1,4 @@
-// src/hooks/useChatMessages.ts
+// Hook quản lý danh sách tin nhắn: tải phân trang, giải mã E2EE, sửa và thu hồi tin nhắn realtime
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { chatService } from '../services/chatService';
 import { e2eeService } from '../services/e2eeService';
@@ -213,6 +213,53 @@ export function useChatMessages({
     );
   }, []);
 
+  // Cập nhật tin nhắn sau khi được chỉnh sửa
+  const handleMessageEdited = useCallback(async (editedMsg: Message) => {
+    let finalContent = editedMsg.content;
+    if (currentUserId && activeChatUser?.id) {
+      try {
+        let partnerPubKey = activeChatUser.publicKey;
+        if (!partnerPubKey) {
+          partnerPubKey = await e2eeService.fetchLatestPublicKey(activeChatUser.id);
+        }
+        if (partnerPubKey) {
+          const sharedKey = await e2eeService.getSharedKey(currentUserId, activeChatUser.id, partnerPubKey);
+          if (sharedKey) {
+            finalContent = await e2eeService.decryptMessage(editedMsg.content, sharedKey);
+          }
+        }
+      } catch (err) {
+        console.warn('[E2EE] Lỗi giải mã tin nhắn đã sửa:', err);
+      }
+    }
+
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id !== editedMsg.id) return msg;
+        return {
+          ...msg,
+          content: finalContent,
+          updatedAt: editedMsg.updatedAt || new Date().toISOString(),
+          isDeleted: false,
+        };
+      })
+    );
+  }, [currentUserId, activeChatUser]);
+
+  // Đánh dấu tin nhắn đã bị thu hồi
+  const handleMessageDeleted = useCallback((messageId: number) => {
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id !== messageId) return msg;
+        return {
+          ...msg,
+          content: 'Tin nhắn đã bị thu hồi',
+          isDeleted: true,
+        };
+      })
+    );
+  }, []);
+
   return {
     messages,
     hasMore,
@@ -222,6 +269,8 @@ export function useChatMessages({
     loadOlderMessages,
     appendMessage,
     updateReaction,
+    handleMessageEdited,
+    handleMessageDeleted,
   };
 }
 
