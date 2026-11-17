@@ -1,4 +1,4 @@
-// Service giao tiếp REST API chat: lấy hội thoại, tin nhắn, sửa/thu hồi tin nhắn, xóa hội thoại
+// Service giao tiếp REST API chat: lấy hội thoại, tin nhắn, sửa/thu hồi tin nhắn, xóa hội thoại và cuộc gọi nhóm
 import { apiClient } from './apiClient';
 import type {
   Conversation,
@@ -7,6 +7,7 @@ import type {
   MessagesPaginationResponse,
   Message,
 } from '../types/chat.types';
+import type { GroupCallJoinResponse } from '../types/call.types';
 
 // Helper trích xuất data từ các dạng ApiResponse khác nhau của Spring Boot:
 // Ví dụ: { success: true, message: "...", data: [...] } hoặc trả thẳng [...]
@@ -196,6 +197,23 @@ export const chatService = {
    */
   async leaveGroup(conversationId: number): Promise<void> {
     await apiClient.post(`/api/conversations/group/${conversationId}/leave`);
+  },
+
+  /**
+   * Bắt đầu hoặc tham gia cuộc gọi nhóm (lấy LiveKit Token)
+   * POST /api/calls/group/{conversationId}/join
+   */
+  async joinGroupCall(conversationId: number): Promise<GroupCallJoinResponse> {
+    const res = await apiClient.post<unknown>(`/api/calls/group/${conversationId}/join`);
+    return extractData<GroupCallJoinResponse>(res);
+  },
+
+  /**
+   * Kết thúc cuộc gọi nhóm
+   * POST /api/calls/group/{conversationId}/end
+   */
+  async endGroupCall(conversationId: number): Promise<void> {
+    await apiClient.post(`/api/calls/group/${conversationId}/end`);
   },
 };
 

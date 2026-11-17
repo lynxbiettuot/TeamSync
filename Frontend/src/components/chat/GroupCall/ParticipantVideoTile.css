@@ -1,0 +1,139 @@
+/* src/components/chat/GroupCall/ParticipantVideoTile.css */
+/* Giao diện khung video của từng thành viên trong cuộc gọi nhóm SFU LiveKit */
+
+.participant-video-tile {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  background-color: #1a1c23;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.participant-video-tile--speaking {
+  border-color: #10b981;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.45);
+}
+
+.participant-video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background-color: #000;
+}
+
+.participant-video-element--mirrored {
+  transform: scaleX(-1);
+}
+
+.participant-video-hidden {
+  display: none;
+}
+
+/* Avatar hiển thị khi camera tắt */
+.participant-fallback-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #2e3856 0%, #1a1c23 100%);
+}
+
+.participant-avatar-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: 700;
+  text-transform: uppercase;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.participant-avatar-label {
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Thanh thông tin dưới chân mỗi ô video */
+.participant-overlay-bar {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.participant-name-badge {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  max-width: 80%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.participant-status-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.participant-badge-mic-muted {
+  background: #ef4444;
+  color: #ffffff;
+  padding: 4px 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.participant-badge-speaking {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+  animation: pulse-speaking 1.2s infinite;
+}
+
+@keyframes pulse-speaking {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+}

@@ -1,9 +1,10 @@
 // src/components/chat/ChatConversationView/ChatConversationView.tsx
-// Component hiển thị không gian chat đang hoạt động: Header đối thoại, danh sách tin nhắn và ô nhập liệu
+// Component hiển thị không gian chat đang hoạt động: Header đối thoại, banner gọi nhóm, danh sách tin nhắn và ô nhập liệu
 import React from 'react';
 import type { Message, ChatUser, Conversation, ReactType } from '../../../types/chat.types';
-import type { CallType } from '../../../types/call.types';
+import type { CallType, GroupCallStartEvent } from '../../../types/call.types';
 import { ChatHeader } from '../ChatHeader/ChatHeader';
+import { GroupCallBanner } from '../GroupCall/GroupCallBanner';
 import { MessageList } from '../MessageList/MessageList';
 import { MessageInput } from '../MessageInput/MessageInput';
 import './ChatConversationView.css';
@@ -20,8 +21,12 @@ interface ChatConversationViewProps {
   isLoadingMore: boolean;
   chatContainerRef: React.RefObject<HTMLDivElement | null>;
   replyingMessage: Message | null;
+  activeGroupCallBanner?: GroupCallStartEvent | null;
   onBack: () => void;
   onStartCall: (partner: ChatUser, type: CallType) => void;
+  onStartGroupCall?: () => void;
+  onJoinGroupCall?: () => void;
+  onDismissGroupCallBanner?: () => void;
   onDeleteConversation: () => void;
   onScrollToTop: () => void;
   onReplyMessage: (message: Message) => void;
@@ -48,8 +53,12 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
   isLoadingMore,
   chatContainerRef,
   replyingMessage,
+  activeGroupCallBanner,
   onBack,
   onStartCall,
+  onStartGroupCall,
+  onJoinGroupCall,
+  onDismissGroupCallBanner,
   onDeleteConversation,
   onScrollToTop,
   onReplyMessage,
@@ -74,6 +83,7 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
         isInCall={isInCall}
         onBack={onBack}
         onStartCall={onStartCall}
+        onStartGroupCall={onStartGroupCall}
         onDeleteConversation={onDeleteConversation}
         onUpdateGroupName={onUpdateGroupName}
         onAddMembers={onAddMembers}
@@ -81,6 +91,18 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
         onLeaveGroup={onLeaveGroup}
         currentUserId={currentUserId}
       />
+
+      {/* Banner thông báo cuộc gọi nhóm nếu đang diễn ra */}
+      {activeGroupCallBanner &&
+        activeGroupCallBanner.conversationId === activeConv?.id &&
+        onJoinGroupCall &&
+        onDismissGroupCallBanner && (
+          <GroupCallBanner
+            callEvent={activeGroupCallBanner}
+            onJoin={onJoinGroupCall}
+            onDismiss={onDismissGroupCallBanner}
+          />
+        )}
 
       {/* Message List: Danh sách tin nhắn & cuộn tải thêm */}
       <MessageList

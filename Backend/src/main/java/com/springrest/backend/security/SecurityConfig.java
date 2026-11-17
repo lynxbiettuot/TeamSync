@@ -1,4 +1,5 @@
 // Cấu hình Spring Security: xác thực JWT, phân quyền endpoint và hỗ trợ CORS cho mọi Origin
+// src/main/java/com/springrest/backend/security/SecurityConfig.java
 package com.springrest.backend.security;
 
 import lombok.RequiredArgsConstructor;
@@ -17,7 +18,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-@Configuration // annotation này giúp config để bắt mọi request qua lớp này trước
+@Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
@@ -32,11 +33,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(Customizer.withDefaults()) // để chế độ này sẽ tìm bean cấu hình CorsConfigurationSource, nếu
-                                                 // không thấy nó sẽ từ chối mọi cross origin
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/ws/**").permitAll() // add more origin urls
+                        .requestMatchers("/api/auth/**", "/ws/**", "/api/webhooks/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

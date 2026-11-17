@@ -37,3 +37,28 @@ export interface ActiveCallSession {
   callType: CallType;
   isInitiator: boolean;
 }
+
+/** Phản hồi từ POST /api/calls/group/{conversationId}/join */
+export interface GroupCallJoinResponse {
+  token: string;
+  serverUrl: string;
+  roomName: string;
+  conversationId: number;
+  hostId?: number;
+  isHost?: boolean;
+}
+
+/** Sự kiện WebSocket khi có cuộc gọi nhóm bắt đầu */
+export interface GroupCallStartEvent {
+  type: 'GROUP_CALL_START';
+  conversationId: number;
+  callerId: number;
+  callerName: string;
+  callerAvatar?: string | null;
+}
+
+/** Sự kiện WebSocket khi cuộc gọi nhóm kết thúc */
+export interface GroupCallEndEvent {
+  type: 'GROUP_CALL_END';
+  conversationId: number;
+}

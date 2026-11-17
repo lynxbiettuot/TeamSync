@@ -1,10 +1,10 @@
 // src/components/chat/ChatHeader/ChatHeader.tsx
-// Header hiển thị tên, avatar, trạng thái online, nút quay lại, nút gọi Video (1-1) và nút quản lý thông tin nhóm (Group)
+// Header hiển thị tên, avatar, trạng thái online, nút quay lại, nút gọi Video (1-1), gọi nhóm LiveKit và quản lý thông tin nhóm
 import React, { useState } from 'react';
 import type { ChatUser, Conversation } from '../../../types/chat.types';
 import type { CallType } from '../../../types/call.types';
 import { CallHeaderActions } from '../VideoCall/CallHeaderActions';
-import { BackArrowIcon } from '../VideoCall/CallIcons';
+import { BackArrowIcon, VideoCameraIcon } from '../VideoCall/CallIcons';
 import { GroupDetailsModal } from '../GroupModal/GroupDetailsModal';
 import './ChatHeader.css';
 
@@ -16,6 +16,7 @@ interface ChatHeaderProps {
   isInCall?: boolean;
   onBack?: () => void;
   onStartCall?: (partner: ChatUser, type: CallType) => void;
+  onStartGroupCall?: () => void;
   onDeleteConversation?: () => void;
   onUpdateGroupName?: (conversationId: number, newName: string) => Promise<void>;
   onAddMembers?: (conversationId: number, memberIds: number[]) => Promise<void>;
@@ -32,6 +33,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   isInCall = false,
   onBack,
   onStartCall,
+  onStartGroupCall,
   onDeleteConversation,
   onUpdateGroupName,
   onAddMembers,
@@ -107,8 +109,22 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         </div>
       </div>
 
-      {/* Action buttons góc phải: Gọi (1-1), Xem thông tin nhóm (Group) và Xóa cuộc trò chuyện */}
+      {/* Action buttons góc phải: Gọi (1-1 / Nhóm), Xem thông tin nhóm (Group) và Xóa cuộc trò chuyện */}
       <div className="chat-header-actions-wrap">
+        {/* Nút gọi nhóm nếu là Group */}
+        {isGroup && onStartGroupCall && (
+          <button
+            type="button"
+            className="chat-header-group-call-btn"
+            onClick={onStartGroupCall}
+            title="Bắt đầu cuộc gọi nhóm"
+            aria-label="Gọi nhóm"
+            disabled={isInCall}
+          >
+            <VideoCameraIcon size={18} />
+          </button>
+        )}
+
         {/* Nút mở modal thông tin nhóm nếu là Group */}
         {isGroup && (
           <button

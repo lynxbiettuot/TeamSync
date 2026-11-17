@@ -17,7 +17,7 @@ import type {
   UserPresenceEvent,
   NotificationItem,
 } from '../types/chat.types';
-import type { CallSignalPayload } from '../types/call.types';
+import type { CallSignalPayload, GroupCallStartEvent, GroupCallEndEvent } from '../types/call.types';
 
 interface UseChatWebSocketProps {
   onMessageReceived: (message: Message) => void;
@@ -27,6 +27,8 @@ interface UseChatWebSocketProps {
   onConversationDeleted?: (event: ConversationDeleteEvent) => void;
   onConversationCreated?: (event: ConversationCreateEvent) => void;
   onConversationUpdated?: (event: ConversationUpdateEvent) => void;
+  onGroupCallStart?: (event: GroupCallStartEvent) => void;
+  onGroupCallEnd?: (event: GroupCallEndEvent) => void;
   onPresenceReceived?: (event: UserPresenceEvent) => void;
   onNotificationReceived?: (notification: NotificationItem) => void;
   onCallSignalReceived?: (signal: CallSignalPayload) => void;
@@ -40,6 +42,8 @@ export function useChatWebSocket({
   onConversationDeleted,
   onConversationCreated,
   onConversationUpdated,
+  onGroupCallStart,
+  onGroupCallEnd,
   onPresenceReceived,
   onNotificationReceived,
   onCallSignalReceived,
@@ -53,6 +57,8 @@ export function useChatWebSocket({
   const onConversationDeletedRef = useRef(onConversationDeleted);
   const onConversationCreatedRef = useRef(onConversationCreated);
   const onConversationUpdatedRef = useRef(onConversationUpdated);
+  const onGroupCallStartRef = useRef(onGroupCallStart);
+  const onGroupCallEndRef = useRef(onGroupCallEnd);
   const onPresenceReceivedRef = useRef(onPresenceReceived);
   const onNotificationReceivedRef = useRef(onNotificationReceived);
   const onCallSignalReceivedRef = useRef(onCallSignalReceived);
@@ -66,6 +72,8 @@ export function useChatWebSocket({
     onConversationDeletedRef.current = onConversationDeleted;
     onConversationCreatedRef.current = onConversationCreated;
     onConversationUpdatedRef.current = onConversationUpdated;
+    onGroupCallStartRef.current = onGroupCallStart;
+    onGroupCallEndRef.current = onGroupCallEnd;
     onPresenceReceivedRef.current = onPresenceReceived;
     onNotificationReceivedRef.current = onNotificationReceived;
     onCallSignalReceivedRef.current = onCallSignalReceived;
@@ -77,6 +85,8 @@ export function useChatWebSocket({
     onConversationDeleted,
     onConversationCreated,
     onConversationUpdated,
+    onGroupCallStart,
+    onGroupCallEnd,
     onPresenceReceived,
     onNotificationReceived,
     onCallSignalReceived,
@@ -125,6 +135,14 @@ export function useChatWebSocket({
             } else if (parsed && parsed.type === 'CONVERSATION_UPDATE') {
               if (onConversationUpdatedRef.current) {
                 onConversationUpdatedRef.current(parsed as ConversationUpdateEvent);
+              }
+            } else if (parsed && parsed.type === 'GROUP_CALL_START') {
+              if (onGroupCallStartRef.current) {
+                onGroupCallStartRef.current(parsed as GroupCallStartEvent);
+              }
+            } else if (parsed && parsed.type === 'GROUP_CALL_END') {
+              if (onGroupCallEndRef.current) {
+                onGroupCallEndRef.current(parsed as GroupCallEndEvent);
               }
             } else {
               if (onMessageReceivedRef.current) {

@@ -1,0 +1,123 @@
+/* src/components/chat/GroupCall/GroupCallBanner.css */
+/* Banner thông báo cuộc gọi nhóm đang diễn ra trong cuộc trò chuyện */
+
+.group-call-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.18) 100%);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 10px 18px;
+  animation: slideDownBanner 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  z-index: 20;
+}
+
+@keyframes slideDownBanner {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.group-call-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.group-call-banner-icon-wrap {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+}
+
+.group-call-banner-icon-pulse {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #10b981;
+  opacity: 0.7;
+  animation: banner-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes banner-ping {
+  75%, 100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.group-call-banner-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.group-call-banner-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #065f46;
+}
+
+.group-call-banner-subtitle {
+  font-size: 12px;
+  color: #047857;
+  margin-top: 2px;
+}
+
+.group-call-banner-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.group-call-banner-join-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #10b981;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+
+.group-call-banner-join-btn:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.group-call-banner-dismiss-btn {
+  background: transparent;
+  border: none;
+  color: #047857;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.group-call-banner-dismiss-btn:hover {
+  background-color: rgba(16, 185, 129, 0.15);
+}
