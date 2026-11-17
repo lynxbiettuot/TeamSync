@@ -64,7 +64,7 @@ export function useGroupCall() {
         // 1. Gọi backend lấy LiveKit token
         const res = await chatService.joinGroupCall(conversationId);
         const { token, serverUrl } = res;
-        setIsHost(Boolean(res.isHost));
+        setIsHost(Boolean(res.isHost ?? (res as { host?: boolean }).host));
 
         // 2. Khởi tạo đối tượng Room của LiveKit
         const room = new Room({

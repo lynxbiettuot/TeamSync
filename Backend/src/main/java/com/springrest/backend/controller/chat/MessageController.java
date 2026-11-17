@@ -1,3 +1,4 @@
+// src/main/java/com/springrest/backend/controller/chat/MessageController.java
 package com.springrest.backend.controller.chat;
 
 import com.springrest.backend.dto.chat.request.EditMessageRequest;
@@ -20,7 +21,7 @@ public class MessageController {
 
     @GetMapping("/{conversationId}")
     public ResponseEntity<?> getMessagesByConversationId(@PathVariable Integer conversationId) {
-        if(conversationId == null) {// request with conversation id empty
+        if (conversationId == null) {
             throw new IllegalArgumentException("conversationId is required");
         }
 
@@ -28,24 +29,24 @@ public class MessageController {
         assert auth != null;
         Integer currentUserId = Integer.parseInt(auth.getName());
 
-        if(currentUserId == null) {
+        if (currentUserId == null) {
             throw new IllegalArgumentException("You are not allowed in this conversation, userId not found");
         }
 
         List<Integer> listUser = messageService.findListMembersJoinConversation(conversationId);
 
-        if(listUser == null || listUser.isEmpty()) {
+        if (listUser == null || listUser.isEmpty()) {
             throw new IllegalArgumentException("Conversation not found");
         }
 
-        if(listUser.size() != 2 || !listUser.contains(currentUserId)) {
+        if (!listUser.contains(currentUserId)) {
             throw new IllegalArgumentException("You are not allowed in this conversation");
         }
 
         try {
             List<ChatMessageResponse> responseData = messageService.getMessagesByConversationId(conversationId);
             return ResponseEntity.ok(responseData);
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(e.getMessage());
         }

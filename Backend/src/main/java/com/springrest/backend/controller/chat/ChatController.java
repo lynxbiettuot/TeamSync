@@ -1,3 +1,4 @@
+// src/main/java/com/springrest/backend/controller/chat/ChatController.java
 package com.springrest.backend.controller.chat;
 
 import com.springrest.backend.dto.chat.request.ChatMessageRequest;
@@ -12,6 +13,7 @@ import com.springrest.backend.entity.Message;
 import com.springrest.backend.entity.User;
 import com.springrest.backend.repository.ConversationRepository;
 import com.springrest.backend.repository.MessageRepository;
+import com.springrest.backend.repository.ParticipantRepository;
 import com.springrest.backend.repository.UserRepository;
 import com.springrest.backend.service.chat.MessageReactionService;
 import com.springrest.backend.service.notification.NotificationProducer;
@@ -25,6 +27,7 @@ import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -35,6 +38,7 @@ public class ChatController {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final ConversationRepository conversationRepository;
+    private final ParticipantRepository participantRepository;
     private final MessageReactionService messageReactionService;
     private final NotificationProducer notificationProducer;
 
@@ -55,7 +59,7 @@ public class ChatController {
             Conversation conversationRef = conversationRepository.getReferenceById(request.getConversationId());
             newMessage.setConversation(conversationRef);
 
-            User userRef = userRepository.getReferenceById(senderId);
+            User userRef = userRepository.findById(senderId).orElse(null);
             newMessage.setUser(userRef);
 
             newMessage.setContent(request.getContent());
@@ -63,19 +67,14 @@ public class ChatController {
             newMessage.setCreatedAt(LocalDateTime.now());
 
             ReplyMessageDTO replyDto = null;
-            //check if user click on reply
-            if(request.getReplyToMessageId() != null) {
+            if (request.getReplyToMessageId() != null) {
                 Optional<Message> parentOpt = messageRepository.findByIdWithUser(request.getReplyToMessageId());
 
-                if(parentOpt.isPresent()) {
-
+                if (parentOpt.isPresent()) {
                     Message parentMessage = parentOpt.orElse(null);
-
                     newMessage.setReplyToMessage(parentMessage);
-
                     String senderName = parentMessage.getUser() != null ? parentMessage.getUser().getDisplayName() : "Unknown";
-
-                    replyDto = new ReplyMessageDTO(parentMessage.getId(),parentMessage.getContent(),senderName);
+                    replyDto = new ReplyMessageDTO(parentMessage.getId(), parentMessage.getContent(), senderName);
                 }
             }
 
@@ -89,31 +88,27 @@ public class ChatController {
                     request.getMessageType(),
                     savedMessage.getCreatedAt()
             );
+            response.setSenderName(userRef != null ? userRef.getDisplayName() : null);
             response.setReplyTo(replyDto);
 
-            messagingTemplate.convertAndSendToUser(
-                    String.valueOf(request.getReceiverId()),
-                    "/queue/messages",
-                    response
-            );
-
-            messagingTemplate.convertAndSendToUser(
-                    String.valueOf(senderId),
-                    "/queue/messages",
-                    response
-            );
-
-            //notification
-            // push notification event and prevent myself notification
-            if (request.getReceiverId() != null && !senderId.equals(request.getReceiverId())) {
-                NotificationEvent notificationEvent = new NotificationEvent(//define event
-                        senderId,
-                        request.getReceiverId(),
-                        NotificationType.MESSAGE,
-                        savedMessage.getContent(),
-                        savedMessage.getConversation().getId()
+            List<Integer> members = participantRepository.findMembersJoinConversation(request.getConversationId());
+            for (Integer memberId : members) {
+                messagingTemplate.convertAndSendToUser(
+                        String.valueOf(memberId),
+                        "/queue/messages",
+                        response
                 );
-                notificationProducer.sendNotificationEvent(notificationEvent);//publish event
+
+                if (!memberId.equals(senderId)) {
+                    NotificationEvent notificationEvent = new NotificationEvent(
+                            senderId,
+                            memberId,
+                            NotificationType.MESSAGE,
+                            savedMessage.getContent(),
+                            savedMessage.getConversation().getId()
+                    );
+                    notificationProducer.sendNotificationEvent(notificationEvent);
+                }
             }
 
         } catch (Exception e) {
@@ -152,18 +147,14 @@ public class ChatController {
             reactionEvent.put("messageId", request.getMessageId());
             reactionEvent.put("reaction", reactionResponse);
 
-            //send to receiverId via queue
-            messagingTemplate.convertAndSendToUser(// send to receiver
-                    String.valueOf(request.getReceiverId()),
-                    "/queue/messages",
-                    reactionEvent
-            );
-
-            messagingTemplate.convertAndSendToUser( //send to ourside for synchronized
-                    String.valueOf(senderId),
-                    "/queue/messages",
-                    reactionEvent
-            );
+            List<Integer> members = participantRepository.findMembersJoinConversation(request.getConversationId());
+            for (Integer memberId : members) {
+                messagingTemplate.convertAndSendToUser(
+                        String.valueOf(memberId),
+                        "/queue/messages",
+                        reactionEvent
+                );
+            }
         }catch (Exception e){
             System.out.println("[WS] Lỗi reactToMessage: " + e.getMessage());
             e.printStackTrace();

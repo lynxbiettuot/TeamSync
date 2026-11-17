@@ -84,10 +84,11 @@ export function useChatPageLogic() {
       let decryptedContent = newMsg.content;
 
       const currentConv = conversations.find((c) => c.id === msgConvId);
+      const isGroup = currentConv?.type === 'GROUP' || currentConv?.conversationType === 'GROUP';
       const partnerUser =
         currentConv?.otherUser || (activeConversationId === msgConvId ? activeChatUser : null);
 
-      if (currentUserId && partnerUser?.id) {
+      if (!isGroup && currentUserId && partnerUser?.id) {
         let pubKey = partnerUser.publicKey;
         if (!pubKey) {
           pubKey = await e2eeService.fetchLatestPublicKey(partnerUser.id);
@@ -217,42 +218,44 @@ export function useChatPageLogic() {
     handleCallSignalRef.current = handleIncomingSignal;
   }, [handleIncomingSignal]);
 
-  // 9. Gửi tin nhắn qua STOMP (/app/chat.send) với E2EE
+  // 9. Gửi tin nhắn qua STOMP (/app/chat.send) với E2EE cho 1-1 và Plaintext cho Group
   const handleSendMessage = async (content: string) => {
     if (!activeConversationId || !currentUserId) return;
 
     const currentConv = conversations.find((c) => c.id === activeConversationId);
+    const isGroup = currentConv?.type === 'GROUP' || currentConv?.conversationType === 'GROUP';
     const receiverId = activeChatUser?.id || currentConv?.otherUser?.id;
-    let receiverPublicKey = activeChatUser?.publicKey || currentConv?.otherUser?.publicKey;
 
-    if (!receiverId) {
-      console.warn('Không xác định được receiver_id');
+    if (!isGroup && !receiverId) {
+      console.warn('Không xác định được receiver_id cho cuộc trò chuyện 1-1');
       return;
     }
 
-    if (!receiverPublicKey) {
-      receiverPublicKey = await e2eeService.fetchLatestPublicKey(receiverId);
-    }
-
     let messageContentToSend = content;
-    if (receiverPublicKey) {
-      try {
-        const sharedKey = await e2eeService.getSharedKey(
-          currentUserId,
-          receiverId,
-          receiverPublicKey
-        );
-        if (sharedKey) {
-          messageContentToSend = await e2eeService.encryptMessage(content, sharedKey);
+    if (!isGroup && receiverId) {
+      let receiverPublicKey = activeChatUser?.publicKey || currentConv?.otherUser?.publicKey;
+      if (!receiverPublicKey) {
+        receiverPublicKey = await e2eeService.fetchLatestPublicKey(receiverId);
+      }
+      if (receiverPublicKey) {
+        try {
+          const sharedKey = await e2eeService.getSharedKey(
+            currentUserId,
+            receiverId,
+            receiverPublicKey
+          );
+          if (sharedKey) {
+            messageContentToSend = await e2eeService.encryptMessage(content, sharedKey);
+          }
+        } catch (err) {
+          console.error('[E2EE] Lỗi mã hóa tin nhắn, gửi dạng thường:', err);
         }
-      } catch (err) {
-        console.error('[E2EE] Lỗi mã hóa tin nhắn, gửi dạng thường:', err);
       }
     }
 
     const payload: SendMessagePayload = {
       conversation_id: activeConversationId,
-      receiver_id: receiverId,
+      receiver_id: isGroup ? null : (receiverId || null),
       content: messageContentToSend,
       message_type: 'TEXT',
       reply_to_message_id: replyingMessage ? replyingMessage.id : null,
@@ -272,9 +275,10 @@ export function useChatPageLogic() {
     if (!activeConversationId) return;
 
     const currentConv = conversations.find((c) => c.id === activeConversationId);
+    const isGroup = currentConv?.type === 'GROUP' || currentConv?.conversationType === 'GROUP';
     const receiverId = activeChatUser?.id || currentConv?.otherUser?.id;
 
-    if (!receiverId) {
+    if (!isGroup && !receiverId) {
       console.warn('Không xác định được receiver_id để thả reaction');
       return;
     }
@@ -282,7 +286,7 @@ export function useChatPageLogic() {
     sendReaction({
       conversationId: activeConversationId,
       messageId,
-      receiverId,
+      receiverId: isGroup ? undefined : receiverId,
       reactType,
     });
   };
@@ -292,10 +296,11 @@ export function useChatPageLogic() {
     if (!activeConversationId) return;
 
     const currentConv = conversations.find((c) => c.id === activeConversationId);
+    const isGroup = currentConv?.type === 'GROUP' || currentConv?.conversationType === 'GROUP';
     const receiverId = activeChatUser?.id || currentConv?.otherUser?.id;
 
     let contentToSend = newContent;
-    if (currentUserId && receiverId) {
+    if (!isGroup && currentUserId && receiverId) {
       try {
         let receiverPublicKey = activeChatUser?.publicKey || currentConv?.otherUser?.publicKey;
         if (!receiverPublicKey) {
@@ -313,7 +318,7 @@ export function useChatPageLogic() {
     }
 
     try {
-      await chatService.editMessage(messageId, contentToSend, receiverId);
+      await chatService.editMessage(messageId, contentToSend, isGroup ? undefined : receiverId);
       handleMessageEdited({
         id: messageId,
         content: newContent,
@@ -330,10 +335,11 @@ export function useChatPageLogic() {
     if (!activeConversationId) return;
 
     const currentConv = conversations.find((c) => c.id === activeConversationId);
+    const isGroup = currentConv?.type === 'GROUP' || currentConv?.conversationType === 'GROUP';
     const receiverId = activeChatUser?.id || currentConv?.otherUser?.id;
 
     try {
-      await chatService.deleteMessage(messageId, receiverId);
+      await chatService.deleteMessage(messageId, isGroup ? undefined : receiverId);
       handleMessageDeleted(messageId);
     } catch (err) {
       console.error('Lỗi khi thu hồi tin nhắn:', err);

@@ -171,7 +171,9 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
           <div className="group-call-confirm-card">
             <h3 className="group-call-confirm-title">Rời khỏi cuộc gọi</h3>
             <p className="group-call-confirm-desc">
-              Bạn muốn chỉ một mình bạn rời đi hay kết thúc hoàn toàn cuộc gọi cho tất cả mọi người?
+              {isHost
+                ? 'Bạn muốn chỉ một mình bạn rời đi hay kết thúc hoàn toàn cuộc gọi cho tất cả mọi người?'
+                : 'Bạn có chắc chắn muốn rời khỏi cuộc gọi này không?'}
             </p>
             <div className="group-call-confirm-actions">
               <button
@@ -182,10 +184,10 @@ export const GroupCallModal: React.FC<GroupCallModalProps> = ({
                   onLeaveCall();
                 }}
               >
-                Chỉ rời cuộc gọi
+                {isHost ? 'Chỉ rời cuộc gọi' : 'Rời cuộc gọi'}
               </button>
 
-              {onEndCallForEveryone && (
+              {isHost && onEndCallForEveryone && (
                 <button
                   type="button"
                   className="group-call-confirm-btn group-call-confirm-btn--end"

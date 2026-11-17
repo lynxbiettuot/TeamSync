@@ -92,7 +92,7 @@ export interface MessageReaction {
 export interface SendReactionPayload {
   conversationId: number;
   messageId: number;
-  receiverId: number;
+  receiverId?: number | null;
   reactType: ReactType;
 }
 
@@ -182,7 +182,7 @@ export interface NotificationListResponse {
 /** Payload gửi qua WebSocket STOMP (/app/chat.send) */
 export interface SendMessagePayload {
   conversation_id: number;
-  receiver_id: number;
+  receiver_id?: number | null;
   content: string;
   message_type: 'TEXT';
   reply_to_message_id?: number | null;

@@ -1,3 +1,4 @@
+// src/main/java/com/springrest/backend/dto/chat/response/ChatMessageResponse.java
 package com.springrest.backend.dto.chat.response;
 
 import com.springrest.backend.entity.Enum.MessageType;
@@ -16,6 +17,7 @@ public class ChatMessageResponse {
     private Integer id;
     private Integer conversationId;
     private Integer senderId;
+    private String senderName;
     private String content;
     private MessageType messageType;
     private LocalDateTime createdAt;
@@ -24,10 +26,11 @@ public class ChatMessageResponse {
     private ReplyMessageDTO replyTo;
     private List<MessageReactionResponse> reactions = new ArrayList<>();
 
-    public ChatMessageResponse(Integer id,Integer conversationId, Integer senderId, String content, MessageType messageType,LocalDateTime createdAt) {
+    public ChatMessageResponse(Integer id, Integer conversationId, Integer senderId, String content, MessageType messageType, LocalDateTime createdAt) {
         this.id = id;
         this.conversationId = conversationId;
         this.senderId = senderId;
+        this.senderName = null;
         this.content = content;
         this.messageType = messageType;
         this.createdAt = createdAt;

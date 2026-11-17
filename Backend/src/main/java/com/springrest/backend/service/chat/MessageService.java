@@ -1,3 +1,4 @@
+// src/main/java/com/springrest/backend/service/chat/MessageService.java
 package com.springrest.backend.service.chat;
 
 import com.springrest.backend.dto.chat.request.EditMessageRequest;
@@ -43,6 +44,7 @@ public class MessageService {
                 m.getMessageType(),
                 m.getCreatedAt()
             );
+            res.setSenderName(m.getUser() != null ? m.getUser().getDisplayName() : null);
             res.setUpdatedAt(m.getUpdatedAt());
             res.setIsDeleted(m.getDeletedAt() != null);
 
@@ -99,6 +101,7 @@ public class MessageService {
                 updatedMessage.getMessageType(),
                 updatedMessage.getCreatedAt()
         );
+        response.setSenderName(message.getUser() != null ? message.getUser().getDisplayName() : null);
         response.setUpdatedAt(updatedMessage.getUpdatedAt());
         response.setIsDeleted(false);
 
@@ -107,18 +110,14 @@ public class MessageService {
         wsEvent.put("conversationId", message.getConversation().getId());
         wsEvent.put("message", response);
 
-        if (request.getReceiverId() != null) {
+        List<Integer> members = participantRepository.findMembersJoinConversation(message.getConversation().getId());
+        for (Integer memberId : members) {
             messagingTemplate.convertAndSendToUser(
-                    String.valueOf(request.getReceiverId()),
+                    String.valueOf(memberId),
                     "/queue/messages",
                     wsEvent
             );
         }
-        messagingTemplate.convertAndSendToUser(
-                String.valueOf(currentUserId),
-                "/queue/messages",
-                wsEvent
-        );
 
         return response;
     }
@@ -141,17 +140,13 @@ public class MessageService {
         wsEvent.put("conversationId", message.getConversation().getId());
         wsEvent.put("messageId", messageId);
 
-        if (receiverId != null) {
+        List<Integer> members = participantRepository.findMembersJoinConversation(message.getConversation().getId());
+        for (Integer memberId : members) {
             messagingTemplate.convertAndSendToUser(
-                    String.valueOf(receiverId),
+                    String.valueOf(memberId),
                     "/queue/messages",
                     wsEvent
             );
         }
-        messagingTemplate.convertAndSendToUser(
-                String.valueOf(currentUserId),
-                "/queue/messages",
-                wsEvent
-        );
     }
 }
