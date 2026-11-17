@@ -1,4 +1,4 @@
-// Hook điều phối toàn bộ logic nghiệp vụ cho ChatPage: quản lý state, E2EE, WebSocket STOMP và WebRTC
+// Hook điều phối toàn bộ logic nghiệp vụ cho ChatPage: quản lý state, E2EE, WebSocket STOMP, WebRTC 1-1 và LiveKit SFU Group Call
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { chatService } from '../../services/chatService';
@@ -9,14 +9,16 @@ import { useChatNotifications } from '../../hooks/useChatNotifications';
 import { useChatMessages } from '../../hooks/useChatMessages';
 import { useChatWebSocket } from '../../hooks/useChatWebSocket';
 import { useWebRTC } from '../../hooks/useWebRTC';
+import { useGroupCall } from '../../hooks/useGroupCall';
 import type { Message, SendMessagePayload, ReactType } from '../../types/chat.types';
-import type { CallSignalPayload } from '../../types/call.types';
+import type { CallSignalPayload, GroupCallStartEvent } from '../../types/call.types';
 
 export function useChatPageLogic() {
   const { user, logout } = useAuth();
   const currentUserId = user?.id ? Number(user.id) : undefined;
 
   const [replyingMessage, setReplyingMessage] = useState<Message | null>(null);
+  const [activeGroupCallBanner, setActiveGroupCallBanner] = useState<GroupCallStartEvent | null>(null);
 
   // 1. Quản lý danh sách hội thoại & chọn cuộc trò chuyện
   const {
@@ -127,7 +129,27 @@ export function useChatPageLogic() {
     [activeConversationId, activeChatUser, appendMessage, conversations, currentUserId, updateLastMessage]
   );
 
-  // 7. Khởi tạo WebSocket STOMP & WebRTC
+  // 7. Quản lý trạng thái và kết nối cuộc gọi nhóm LiveKit SFU
+  const {
+    isCallActive: isGroupCallActive,
+    isConnecting: isGroupCallConnecting,
+    activeConversationId: groupCallConversationId,
+    participants: groupCallParticipants,
+    isMuted: isGroupCallMuted,
+    isCameraOff: isGroupCallCameraOff,
+    isScreenSharing: isGroupCallScreenSharing,
+    activeSpeakerIds: groupCallActiveSpeakerIds,
+    callDuration: groupCallDuration,
+    isHost: isGroupCallHost,
+    joinGroupCall,
+    leaveGroupCall,
+    endGroupCall,
+    toggleMute: toggleGroupCallMute,
+    toggleCamera: toggleGroupCallCamera,
+    toggleScreenShare: toggleGroupCallScreenShare,
+  } = useGroupCall();
+
+  // 8. Khởi tạo WebSocket STOMP & WebRTC
   const handleCallSignalRef = useRef<(signal: CallSignalPayload) => void>(() => {});
 
   const { isConnected, sendMessage, sendReaction, sendCallSignal } = useChatWebSocket({
@@ -153,6 +175,15 @@ export function useChatPageLogic() {
     },
     onConversationUpdated: (event) => {
       updateConversation(event.conversation);
+    },
+    onGroupCallStart: (event) => {
+      setActiveGroupCallBanner(event);
+    },
+    onGroupCallEnd: (event) => {
+      setActiveGroupCallBanner((prev) => (prev?.conversationId === event.conversationId ? null : prev));
+      if (groupCallConversationId === event.conversationId) {
+        leaveGroupCall();
+      }
     },
     onPresenceReceived: handlePresenceReceived,
     onNotificationReceived: handleNotificationReceived,
@@ -376,6 +407,29 @@ export function useChatPageLogic() {
     }
   };
 
+  const handleStartGroupCall = useCallback(() => {
+    if (activeConversationId) {
+      joinGroupCall(activeConversationId);
+    }
+  }, [activeConversationId, joinGroupCall]);
+
+  const handleJoinGroupCall = useCallback(() => {
+    if (activeGroupCallBanner) {
+      joinGroupCall(activeGroupCallBanner.conversationId);
+    }
+  }, [activeGroupCallBanner, joinGroupCall]);
+
+  const handleDismissGroupCallBanner = useCallback(() => {
+    setActiveGroupCallBanner(null);
+  }, []);
+
+  const handleEndGroupCallForEveryone = useCallback(() => {
+    const targetConvId = groupCallConversationId || activeConversationId;
+    if (targetConvId) {
+      endGroupCall(targetConvId);
+    }
+  }, [groupCallConversationId, activeConversationId, endGroupCall]);
+
   const activeConv = conversations.find((c) => c.id === activeConversationId);
   const otherChatUserId = activeChatUser?.id || activeConv?.otherUser?.id;
   const isChatUserOnline = otherChatUserId !== undefined && onlineUserIds.has(otherChatUserId);
@@ -430,5 +484,24 @@ export function useChatPageLogic() {
     endCall,
     toggleMute,
     toggleCamera,
+    isGroupCallActive,
+    isGroupCallConnecting,
+    groupCallParticipants,
+    groupCallDuration,
+    isGroupCallMuted,
+    isGroupCallCameraOff,
+    isGroupCallScreenSharing,
+    groupCallActiveSpeakerIds,
+    isGroupCallHost,
+    activeGroupCallBanner,
+    handleStartGroupCall,
+    handleJoinGroupCall,
+    handleDismissGroupCallBanner,
+    handleEndGroupCallForEveryone,
+    leaveGroupCall,
+    endGroupCall,
+    toggleGroupCallMute,
+    toggleGroupCallCamera,
+    toggleGroupCallScreenShare,
   };
 }

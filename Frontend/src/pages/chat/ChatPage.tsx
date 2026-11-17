@@ -1,5 +1,5 @@
 // src/pages/chat/ChatPage.tsx
-// Trang chính ChatPage: kết hợp Navbar, Sidebar, ConversationView và CallOverlays
+// Trang chính ChatPage: kết hợp Navbar, Sidebar, ConversationView, CallOverlays (1-1) và GroupCallModal (LiveKit SFU)
 import React from 'react';
 import { useChatPageLogic } from './useChatPageLogic';
 import { ChatNavbar } from '../../components/chat/ChatNavbar/ChatNavbar';
@@ -8,6 +8,7 @@ import { ChatConversationView } from '../../components/chat/ChatConversationView
 import { ChatEmptyState } from '../../components/chat/ChatEmptyState/ChatEmptyState';
 import { NotificationToast } from '../../components/chat/Notification/NotificationToast';
 import { CallOverlays } from '../../components/chat/VideoCall/CallOverlays';
+import { GroupCallModal } from '../../components/chat/GroupCall/GroupCallModal';
 import './ChatPage.css';
 
 export const ChatPage: React.FC = () => {
@@ -61,6 +62,24 @@ export const ChatPage: React.FC = () => {
     endCall,
     toggleMute,
     toggleCamera,
+    isGroupCallActive,
+    isGroupCallConnecting,
+    groupCallParticipants,
+    groupCallDuration,
+    isGroupCallMuted,
+    isGroupCallCameraOff,
+    isGroupCallScreenSharing,
+    groupCallActiveSpeakerIds,
+    isGroupCallHost,
+    activeGroupCallBanner,
+    handleStartGroupCall,
+    handleJoinGroupCall,
+    handleDismissGroupCallBanner,
+    handleEndGroupCallForEveryone,
+    leaveGroupCall,
+    toggleGroupCallMute,
+    toggleGroupCallCamera,
+    toggleGroupCallScreenShare,
   } = useChatPageLogic();
 
   return (
@@ -99,15 +118,19 @@ export const ChatPage: React.FC = () => {
             activeChatUser={activeChatUser}
             currentUserId={currentUserId}
             isOnline={isChatUserOnline}
-            isInCall={callState !== 'IDLE'}
+            isInCall={callState !== 'IDLE' || isGroupCallActive || isGroupCallConnecting}
             messages={messages}
             hasMore={hasMore}
             isLoadingInitial={isLoadingInitial}
             isLoadingMore={isLoadingMore}
             chatContainerRef={chatContainerRef}
             replyingMessage={replyingMessage}
+            activeGroupCallBanner={activeGroupCallBanner}
             onBack={() => selectConversation(null)}
             onStartCall={startCall}
+            onStartGroupCall={handleStartGroupCall}
+            onJoinGroupCall={handleJoinGroupCall}
+            onDismissGroupCallBanner={handleDismissGroupCallBanner}
             onDeleteConversation={handleDeleteConversation}
             onScrollToTop={loadOlderMessages}
             onReplyMessage={setReplyingMessage}
@@ -133,7 +156,7 @@ export const ChatPage: React.FC = () => {
         onDismiss={handleDismissToast}
       />
 
-      {/* 4. Các modal hiển thị cuộc gọi WebRTC */}
+      {/* 4. Các modal hiển thị cuộc gọi WebRTC 1-1 */}
       <CallOverlays
         callState={callState}
         callSession={callSession}
@@ -147,6 +170,25 @@ export const ChatPage: React.FC = () => {
         onToggleMute={toggleMute}
         onToggleCamera={toggleCamera}
         onHangup={endCall}
+      />
+
+      {/* 5. Modal toàn màn hình cuộc gọi nhóm LiveKit SFU */}
+      <GroupCallModal
+        isOpen={isGroupCallActive || isGroupCallConnecting}
+        isConnecting={isGroupCallConnecting}
+        conversationName={activeConv?.name || 'Nhóm trò chuyện'}
+        participants={groupCallParticipants}
+        activeSpeakerIds={groupCallActiveSpeakerIds}
+        isMuted={isGroupCallMuted}
+        isCameraOff={isGroupCallCameraOff}
+        isScreenSharing={isGroupCallScreenSharing}
+        callDuration={groupCallDuration}
+        isHost={isGroupCallHost}
+        onToggleMute={toggleGroupCallMute}
+        onToggleCamera={toggleGroupCallCamera}
+        onToggleScreenShare={toggleGroupCallScreenShare}
+        onLeaveCall={leaveGroupCall}
+        onEndCallForEveryone={handleEndGroupCallForEveryone}
       />
     </div>
   );

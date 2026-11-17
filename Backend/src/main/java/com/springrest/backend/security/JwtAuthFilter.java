@@ -1,3 +1,4 @@
+// src/main/java/com/springrest/backend/security/JwtAuthFilter.java
 package com.springrest.backend.security;
 
 import io.jsonwebtoken.Claims;
@@ -17,9 +18,15 @@ import java.util.Collections;
 
 @Component
 @RequiredArgsConstructor
-public class JwtAuthFilter extends OncePerRequestFilter {// jwt filter for http/https
+public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path != null && path.startsWith("/api/webhooks/");
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,

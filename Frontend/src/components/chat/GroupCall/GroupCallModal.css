@@ -1,0 +1,275 @@
+/* src/components/chat/GroupCall/GroupCallModal.css */
+/* Giao diện Modal toàn màn hình cho cuộc gọi nhóm WebRTC LiveKit SFU */
+
+.group-call-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background-color: #0b0f19;
+  display: flex;
+  flex-direction: column;
+  color: #f8fafc;
+  font-family: inherit;
+  overflow: hidden;
+}
+
+/* Header */
+.group-call-header {
+  height: 64px;
+  min-height: 64px;
+  background-color: #111827;
+  border-bottom: 1px solid #1f2937;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+}
+
+.group-call-header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.group-call-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f3f4f6;
+}
+
+.group-call-badge-count {
+  background: #374151;
+  color: #9ca3af;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.group-call-header-timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* Body: Vùng hiển thị video các thành viên */
+.group-call-body {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-call-grid {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  height: 100%;
+  max-width: 1400px;
+  align-content: center;
+}
+
+/* Cấu trúc lưới linh hoạt theo số người */
+.group-call-grid--1 {
+  grid-template-columns: 1fr;
+  max-height: 80vh;
+}
+
+.group-call-grid--2 {
+  grid-template-columns: repeat(2, 1fr);
+  max-height: 75vh;
+}
+
+.group-call-grid--3,
+.group-call-grid--4 {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  max-height: 80vh;
+}
+
+.group-call-grid--5,
+.group-call-grid--6 {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  max-height: 80vh;
+}
+
+.group-call-grid--many {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  max-height: 85vh;
+}
+
+/* Trạng thái đang kết nối */
+.group-call-connecting-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.group-call-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #10b981;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.group-call-connecting-text {
+  font-size: 15px;
+  color: #94a3b8;
+}
+
+/* Footer Control Bar */
+.group-call-footer {
+  height: 80px;
+  min-height: 80px;
+  background-color: #111827;
+  border-top: 1px solid #1f2937;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 24px;
+}
+
+.group-call-control-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: none;
+  background-color: #374151;
+  color: #f3f4f6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.group-call-control-btn:hover {
+  background-color: #4b5563;
+  transform: translateY(-2px);
+}
+
+.group-call-control-btn--active {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+.group-call-control-btn--active:hover {
+  background-color: #dc2626;
+}
+
+.group-call-control-btn--screen-active {
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+.group-call-control-btn--hangup {
+  background-color: #ef4444;
+  color: #ffffff;
+  width: 60px;
+  height: 60px;
+}
+
+.group-call-control-btn--hangup:hover {
+  background-color: #dc2626;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.5);
+}
+
+/* Dialog xác nhận rời phòng hoặc kết thúc cho tất cả */
+.group-call-confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-call-confirm-card {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 14px;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.group-call-confirm-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #f9fafb;
+  margin-bottom: 8px;
+}
+
+.group-call-confirm-desc {
+  font-size: 14px;
+  color: #9ca3af;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.group-call-confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.group-call-confirm-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.group-call-confirm-btn--end {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.group-call-confirm-btn--end:hover {
+  background: #dc2626;
+}
+
+.group-call-confirm-btn--leave {
+  background: #374151;
+  color: #f3f4f6;
+}
+
+.group-call-confirm-btn--leave:hover {
+  background: #4b5563;
+}
+
+.group-call-confirm-btn--cancel {
+  background: transparent;
+  color: #9ca3af;
+}
+
+.group-call-confirm-btn--cancel:hover {
+  color: #ffffff;
+}
+
