@@ -1,4 +1,4 @@
-// Component thanh điều hướng chính của trang Chat: hiển thị logo, trạng thái socket, chuông thông báo và thông tin user
+// Component thanh điều hướng chính của trang Chat: hiển thị logo, trạng thái socket, nút E2EE PIN, chuông thông báo và user
 import React from 'react';
 import type { NotificationItem } from '../../../types/chat.types';
 import { NotificationBell } from '../Notification/NotificationBell';
@@ -12,6 +12,7 @@ interface ChatNavbarProps {
   onNotificationClick: (notification: NotificationItem) => void;
   onMarkAllAsRead: () => void;
   onLogout: () => void;
+  onOpenE2EEModal?: () => void;
 }
 
 export const ChatNavbar: React.FC<ChatNavbarProps> = ({
@@ -22,6 +23,7 @@ export const ChatNavbar: React.FC<ChatNavbarProps> = ({
   onNotificationClick,
   onMarkAllAsRead,
   onLogout,
+  onOpenE2EEModal,
 }) => {
   return (
     <header className="chat-navbar">
@@ -31,6 +33,18 @@ export const ChatNavbar: React.FC<ChatNavbarProps> = ({
       </div>
 
       <div className="chat-navbar-actions">
+        {/* Nút quản lý mã hóa E2EE & PIN */}
+        {onOpenE2EEModal && (
+          <button
+            type="button"
+            className="chat-e2ee-btn"
+            onClick={onOpenE2EEModal}
+            title="Quản lý mã hóa E2EE và mã PIN"
+          >
+            🛡️ Mã hóa E2EE
+          </button>
+        )}
+
         {/* Trạng thái kết nối WebSocket của chính mình */}
         <div
           className={`chat-ws-status ${

@@ -1,4 +1,4 @@
-/* Thanh điều hướng ChatNavbar trên đầu trang: thương hiệu, trạng thái kết nối, chuông thông báo và menu user */
+/* Thanh điều hướng ChatNavbar trên đầu trang: thương hiệu, trạng thái kết nối, nút E2EE, chuông thông báo và menu user */
 .chat-navbar {
   height: 60px;
   background: #ffffff;
@@ -8,6 +8,25 @@
   justify-content: space-between;
   padding: 0 24px;
   flex-shrink: 0;
+}
+
+.chat-e2ee-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chat-e2ee-btn:hover {
+  background: #dbeafe;
 }
 
 .chat-brand {

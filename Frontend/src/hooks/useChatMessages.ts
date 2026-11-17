@@ -1,28 +1,63 @@
-// Hook quản lý danh sách tin nhắn: tải phân trang, giải mã E2EE, sửa và thu hồi tin nhắn realtime
+// Hook quản lý danh sách tin nhắn: tải phân trang, giải mã E2EE 1-1 và K_nhom, sửa và thu hồi tin nhắn realtime
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { chatService } from '../services/chatService';
 import { e2eeService } from '../services/e2eeService';
-import type { Message, MessageReaction, ChatUser } from '../types/chat.types';
+import type { Message, MessageReaction, ChatUser, GroupMember } from '../types/chat.types';
 
 interface UseChatMessagesProps {
   conversationId: number | null;
   currentUserId?: number;
   activeChatUser?: ChatUser | null;
+  isGroup?: boolean;
+  groupMembers?: GroupMember[];
 }
 
 /**
- * Helper giải mã danh sách tin nhắn bằng E2EE Shared Key
+ * Helper giải mã danh sách tin nhắn bằng E2EE Shared Key (1-1) hoặc K_nhom (Group)
  */
 async function decryptMessageBatch(
   rawMessages: Message[],
   currentUserId?: number,
-  partnerUser?: ChatUser | null
+  partnerUser?: ChatUser | null,
+  conversationId?: number | null,
+  isGroup?: boolean,
+  groupMembers?: GroupMember[]
 ): Promise<Message[]> {
-  if (!currentUserId || !partnerUser?.id) {
+  if (!currentUserId || !conversationId) {
     return rawMessages;
   }
 
-  // Lấy Public Key của đối phương (từ state hoặc fetch trực tiếp từ server)
+  // 1. Trường hợp Group Chat: giải mã bằng K_nhom
+  if (isGroup) {
+    try {
+      const groupKey = await e2eeService.getOrFetchGroupKey(
+        conversationId,
+        currentUserId,
+        groupMembers
+      );
+      if (!groupKey) return rawMessages;
+
+      return await Promise.all(
+        rawMessages.map(async (msg) => {
+          try {
+            const decrypted = await e2eeService.decryptMessage(msg.content, groupKey);
+            return { ...msg, content: decrypted };
+          } catch {
+            return msg;
+          }
+        })
+      );
+    } catch (err) {
+      console.warn('[E2EE] Lỗi giải mã batch tin nhắn nhóm:', err);
+      return rawMessages;
+    }
+  }
+
+  // 2. Trường hợp Direct Chat 1-1: giải mã bằng ECDH Pairwise Shared Key
+  if (!partnerUser?.id) {
+    return rawMessages;
+  }
+
   let partnerPubKey = partnerUser.publicKey;
   if (!partnerPubKey) {
     partnerPubKey = await e2eeService.fetchLatestPublicKey(partnerUser.id);
@@ -52,7 +87,7 @@ async function decryptMessageBatch(
       })
     );
   } catch (err) {
-    console.warn('[E2EE] Lỗi giải mã batch tin nhắn:', err);
+    console.warn('[E2EE] Lỗi giải mã batch tin nhắn 1-1:', err);
     return rawMessages;
   }
 }
@@ -61,6 +96,8 @@ export function useChatMessages({
   conversationId,
   currentUserId,
   activeChatUser,
+  isGroup,
+  groupMembers,
 }: UseChatMessagesProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -90,7 +127,14 @@ export function useChatMessages({
       .then(async (res) => {
         if (isCancelled) return;
         const rawList = res.data || [];
-        const decryptedList = await decryptMessageBatch(rawList, currentUserId, activeChatUser);
+        const decryptedList = await decryptMessageBatch(
+          rawList,
+          currentUserId,
+          activeChatUser,
+          conversationId,
+          isGroup,
+          groupMembers
+        );
 
         if (isCancelled) return;
         setMessages(decryptedList);
@@ -112,7 +156,7 @@ export function useChatMessages({
     return () => {
       isCancelled = true;
     };
-  }, [conversationId, currentUserId, activeChatUser]);
+  }, [conversationId, currentUserId, activeChatUser, isGroup, groupMembers]);
 
   // 2. Cuộn lên để tải thêm tin nhắn cũ (Cursor-based Pagination)
   const loadOlderMessages = useCallback(async () => {
@@ -138,7 +182,14 @@ export function useChatMessages({
       }
 
       // Giải mã E2EE cho các tin nhắn cũ vừa tải về
-      const decryptedOlder = await decryptMessageBatch(older, currentUserId, activeChatUser);
+      const decryptedOlder = await decryptMessageBatch(
+        older,
+        currentUserId,
+        activeChatUser,
+        conversationId,
+        isGroup,
+        groupMembers
+      );
 
       // Lưu lại chiều cao hiện tại trước khi prepend
       prevScrollHeightRef.current = container.scrollHeight;
@@ -152,7 +203,7 @@ export function useChatMessages({
     } finally {
       setIsLoadingMore(false);
     }
-  }, [conversationId, hasMore, isLoadingMore, isLoadingInitial, messages, currentUserId, activeChatUser]);
+  }, [conversationId, hasMore, isLoadingMore, isLoadingInitial, messages, currentUserId, activeChatUser, isGroup, groupMembers]);
 
   // 3. Xử lý giữ nguyên vị trí cuộn bằng useLayoutEffect (Tránh giật màn hình)
   useLayoutEffect(() => {
@@ -216,7 +267,16 @@ export function useChatMessages({
   // Cập nhật tin nhắn sau khi được chỉnh sửa
   const handleMessageEdited = useCallback(async (editedMsg: Message) => {
     let finalContent = editedMsg.content;
-    if (currentUserId && activeChatUser?.id) {
+    if (isGroup && conversationId && currentUserId) {
+      try {
+        const groupKey = await e2eeService.getOrFetchGroupKey(conversationId, currentUserId, groupMembers);
+        if (groupKey) {
+          finalContent = await e2eeService.decryptMessage(editedMsg.content, groupKey);
+        }
+      } catch (err) {
+        console.warn('[E2EE] Lỗi giải mã tin nhắn nhóm đã sửa:', err);
+      }
+    } else if (currentUserId && activeChatUser?.id) {
       try {
         let partnerPubKey = activeChatUser.publicKey;
         if (!partnerPubKey) {
@@ -229,7 +289,7 @@ export function useChatMessages({
           }
         }
       } catch (err) {
-        console.warn('[E2EE] Lỗi giải mã tin nhắn đã sửa:', err);
+        console.warn('[E2EE] Lỗi giải mã tin nhắn 1-1 đã sửa:', err);
       }
     }
 
@@ -244,7 +304,7 @@ export function useChatMessages({
         };
       })
     );
-  }, [currentUserId, activeChatUser]);
+  }, [conversationId, isGroup, groupMembers, currentUserId, activeChatUser]);
 
   // Đánh dấu tin nhắn đã bị thu hồi
   const handleMessageDeleted = useCallback((messageId: number) => {

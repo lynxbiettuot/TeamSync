@@ -1,4 +1,4 @@
-// Hook quản lý danh sách cuộc hội thoại, giải mã E2EE tin nhắn cuối và chọn phòng chat
+// Hook quản lý danh sách cuộc hội thoại, giải mã E2EE tin nhắn cuối (1-1 và nhóm) và chọn phòng chat
 import { useState, useEffect, useCallback } from 'react';
 import { chatService } from '../services/chatService';
 import { e2eeService } from '../services/e2eeService';
@@ -17,8 +17,32 @@ export function useConversations(currentUserId?: number) {
 
       return await Promise.all(
         rawList.map(async (conv) => {
+          if (!conv.lastMessage) return conv;
+
+          const isGroup =
+            conv.conversationType === 'GROUP' ||
+            conv.type === 'GROUP' ||
+            conv.conversation_type === 'GROUP';
+
+          if (isGroup) {
+            try {
+              const groupKey = await e2eeService.getOrFetchGroupKey(conv.id, currentUserId, conv.members);
+              if (groupKey) {
+                const decrypted = await e2eeService.decryptMessage(conv.lastMessage, groupKey);
+                return {
+                  ...conv,
+                  lastMessage: decrypted,
+                  last_message: decrypted,
+                };
+              }
+            } catch {
+              // Giữ nguyên nếu giải mã thất bại
+            }
+            return conv;
+          }
+
           const other = conv.otherUser;
-          if (!other || !other.publicKey || !conv.lastMessage) return conv;
+          if (!other || !other.publicKey) return conv;
 
           try {
             const sharedKey = await e2eeService.getSharedKey(currentUserId, other.id, other.publicKey);

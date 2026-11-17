@@ -1,0 +1,206 @@
+/* File định kiểu CSS cho modal quản lý mã hóa E2EE và sao lưu/khôi phục mã PIN */
+.e2ee-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  padding: 16px;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+.e2ee-modal-card {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalScaleUp 0.2s ease-out;
+}
+
+.e2ee-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.e2ee-modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.e2ee-shield-icon {
+  font-size: 28px;
+}
+
+.e2ee-modal-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.e2ee-modal-desc {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.e2ee-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+
+.e2ee-close-btn:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.e2ee-tabs {
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.e2ee-tab-btn {
+  flex: 1;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.e2ee-tab-btn.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  background: #ffffff;
+}
+
+.e2ee-alert {
+  margin: 16px 24px 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.e2ee-alert-success {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.e2ee-alert-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.e2ee-form {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.e2ee-note {
+  margin: 0;
+  font-size: 0.825rem;
+  color: #475569;
+  background: #f8fafc;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 3px solid #3b82f6;
+  line-height: 1.45;
+}
+
+.e2ee-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.e2ee-field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.e2ee-field input {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.95rem;
+  letter-spacing: 2px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.e2ee-field input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.e2ee-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.e2ee-btn-cancel {
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.e2ee-btn-cancel:hover {
+  background: #f1f5f9;
+}
+
+.e2ee-btn-primary {
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.e2ee-btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.e2ee-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

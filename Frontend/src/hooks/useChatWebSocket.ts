@@ -1,5 +1,4 @@
-// src/hooks/useChatWebSocket.ts
-// Hook quản lý kết nối STOMP WebSocket: tin nhắn, reaction, presence, notification và báo hiệu cuộc gọi WebRTC
+// Hook quản lý kết nối STOMP WebSocket: tin nhắn, reaction, E2EE khóa nhóm, presence, notification và báo hiệu WebRTC
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Client, type IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
@@ -16,6 +15,7 @@ import type {
   ConversationUpdateEvent,
   UserPresenceEvent,
   NotificationItem,
+  GroupKeyDistributeEvent,
 } from '../types/chat.types';
 import type { CallSignalPayload, GroupCallStartEvent, GroupCallEndEvent } from '../types/call.types';
 
@@ -32,6 +32,7 @@ interface UseChatWebSocketProps {
   onPresenceReceived?: (event: UserPresenceEvent) => void;
   onNotificationReceived?: (notification: NotificationItem) => void;
   onCallSignalReceived?: (signal: CallSignalPayload) => void;
+  onGroupKeyDistributed?: (event: GroupKeyDistributeEvent) => void;
 }
 
 export function useChatWebSocket({
@@ -47,6 +48,7 @@ export function useChatWebSocket({
   onPresenceReceived,
   onNotificationReceived,
   onCallSignalReceived,
+  onGroupKeyDistributed,
 }: UseChatWebSocketProps) {
   const [isConnected, setIsConnected] = useState(false);
   const stompClientRef = useRef<Client | null>(null);
@@ -62,6 +64,7 @@ export function useChatWebSocket({
   const onPresenceReceivedRef = useRef(onPresenceReceived);
   const onNotificationReceivedRef = useRef(onNotificationReceived);
   const onCallSignalReceivedRef = useRef(onCallSignalReceived);
+  const onGroupKeyDistributedRef = useRef(onGroupKeyDistributed);
 
   // Giữ ref callback mới nhất tránh re-subscribe không cần thiết
   useEffect(() => {
@@ -77,6 +80,7 @@ export function useChatWebSocket({
     onPresenceReceivedRef.current = onPresenceReceived;
     onNotificationReceivedRef.current = onNotificationReceived;
     onCallSignalReceivedRef.current = onCallSignalReceived;
+    onGroupKeyDistributedRef.current = onGroupKeyDistributed;
   }, [
     onMessageReceived,
     onReactionReceived,
@@ -90,6 +94,7 @@ export function useChatWebSocket({
     onPresenceReceived,
     onNotificationReceived,
     onCallSignalReceived,
+    onGroupKeyDistributed,
   ]);
 
   useEffect(() => {
@@ -143,6 +148,10 @@ export function useChatWebSocket({
             } else if (parsed && parsed.type === 'GROUP_CALL_END') {
               if (onGroupCallEndRef.current) {
                 onGroupCallEndRef.current(parsed as GroupCallEndEvent);
+              }
+            } else if (parsed && parsed.type === 'GROUP_KEY_DISTRIBUTE') {
+              if (onGroupKeyDistributedRef.current) {
+                onGroupKeyDistributedRef.current(parsed as GroupKeyDistributeEvent);
               }
             } else {
               if (onMessageReceivedRef.current) {
@@ -199,6 +208,18 @@ export function useChatWebSocket({
             }
           } catch (err) {
             console.error('[WebSocket] Lỗi parse call signal event:', err);
+          }
+        });
+
+        // 5. Lắng nghe phân phối K_nhom E2EE tại /user/queue/group-keys
+        client.subscribe('/user/queue/group-keys', (stompMessage: IMessage) => {
+          try {
+            const parsed = JSON.parse(stompMessage.body) as GroupKeyDistributeEvent;
+            if (onGroupKeyDistributedRef.current && parsed) {
+              onGroupKeyDistributedRef.current(parsed);
+            }
+          } catch (err) {
+            console.error('[WebSocket] Lỗi parse group key event:', err);
           }
         });
       },

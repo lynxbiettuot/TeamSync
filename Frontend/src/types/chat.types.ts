@@ -1,4 +1,4 @@
-// src/types/chat.types.ts
+// Định nghĩa các interface và type cho hội thoại chat, tin nhắn, reaction, cuộc gọi và mã hóa E2EE nhóm/PIN
 
 export type ConversationType = 'INDIVIDUAL' | 'GROUP';
 export type GroupRoleType = 'GROUP_ADMIN' | 'GROUP_MEMBER';
@@ -22,6 +22,7 @@ export interface GroupMember {
   avatarUrl: string | null;
   role: GroupRoleType;
   joinedAt?: string;
+  publicKey?: string | null;
 }
 
 /** Cuộc hội thoại ở Sidebar */
@@ -92,7 +93,7 @@ export interface MessageReaction {
 export interface SendReactionPayload {
   conversationId: number;
   messageId: number;
-  receiverId: number;
+  receiverId?: number | null;
   reactType: ReactType;
 }
 
@@ -182,7 +183,7 @@ export interface NotificationListResponse {
 /** Payload gửi qua WebSocket STOMP (/app/chat.send) */
 export interface SendMessagePayload {
   conversation_id: number;
-  receiver_id: number;
+  receiver_id?: number | null;
   content: string;
   message_type: 'TEXT';
   reply_to_message_id?: number | null;
@@ -198,4 +199,48 @@ export interface MessagesPaginationResponse {
 /** Response tạo/lấy hội thoại 1-1 từ POST /api/conversations/direct/{userId} */
 export interface DirectConversationResponse {
   conversation_id: number;
+}
+
+/** Response từ GET /api/conversations/group/{conversationId}/key */
+export interface GroupKeyResponse {
+  conversationId: number;
+  recipientId: number;
+  senderId: number;
+  encryptedKey: string;
+  keyVersion: number;
+}
+
+/** Item mã hóa khóa cho từng thành viên */
+export interface MemberEncryptedKey {
+  recipientId: number;
+  encryptedKey: string;
+}
+
+/** Payload gửi lên POST /api/conversations/group/{conversationId}/keys */
+export interface DistributeGroupKeysPayload {
+  keyVersion?: number;
+  keys: MemberEncryptedKey[];
+}
+
+/** Sự kiện WebSocket khi K_nhom được phân phối (/user/queue/group-keys) */
+export interface GroupKeyDistributeEvent {
+  type: 'GROUP_KEY_DISTRIBUTE';
+  conversationId: number;
+  recipientId: number;
+  senderId: number;
+  encryptedKey: string;
+  keyVersion: number;
+}
+
+/** Payload sao lưu khóa riêng tư E2EE bằng mã PIN */
+export interface E2EEBackupPayload {
+  encryptedPrivateKey: string;
+  backupSalt: string;
+}
+
+/** Response lấy thông tin sao lưu E2EE */
+export interface E2EEBackupResponse {
+  hasBackup: boolean;
+  encryptedPrivateKey?: string | null;
+  backupSalt?: string | null;
 }

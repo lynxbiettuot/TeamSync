@@ -1,4 +1,4 @@
-// Service giao tiếp REST API chat: lấy hội thoại, tin nhắn, sửa/thu hồi tin nhắn, xóa hội thoại và cuộc gọi nhóm
+// Service giao tiếp REST API chat: lấy hội thoại, tin nhắn, E2EE khóa nhóm, sao lưu PIN, sửa/thu hồi tin nhắn và cuộc gọi nhóm
 import { apiClient } from './apiClient';
 import type {
   Conversation,
@@ -6,6 +6,10 @@ import type {
   DirectConversationResponse,
   MessagesPaginationResponse,
   Message,
+  DistributeGroupKeysPayload,
+  GroupKeyResponse,
+  E2EEBackupPayload,
+  E2EEBackupResponse,
 } from '../types/chat.types';
 import type { GroupCallJoinResponse } from '../types/call.types';
 
@@ -214,6 +218,44 @@ export const chatService = {
    */
   async endGroupCall(conversationId: number): Promise<void> {
     await apiClient.post(`/api/calls/group/${conversationId}/end`);
+  },
+
+  /**
+   * Phân phối K_nhom đã được mã hóa tới từng thành viên
+   * POST /api/conversations/group/{conversationId}/keys
+   */
+  async distributeGroupKeys(conversationId: number, payload: DistributeGroupKeysPayload): Promise<void> {
+    await apiClient.post(`/api/conversations/group/${conversationId}/keys`, payload);
+  },
+
+  /**
+   * Lấy K_nhom được bọc cho người dùng hiện tại
+   * GET /api/conversations/group/{conversationId}/key
+   */
+  async getGroupKey(conversationId: number): Promise<GroupKeyResponse | null> {
+    try {
+      const res = await apiClient.get<unknown>(`/api/conversations/group/${conversationId}/key`);
+      return extractData<GroupKeyResponse>(res);
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Sao lưu khóa riêng tư E2EE mã hóa bằng PIN lên Server
+   * POST /api/e2ee/backup
+   */
+  async backupE2EE(payload: E2EEBackupPayload): Promise<void> {
+    await apiClient.post('/api/e2ee/backup', payload);
+  },
+
+  /**
+   * Lấy bản sao lưu khóa E2EE để khôi phục bằng PIN
+   * GET /api/e2ee/backup
+   */
+  async getE2EEBackup(): Promise<E2EEBackupResponse> {
+    const res = await apiClient.get<unknown>('/api/e2ee/backup');
+    return extractData<E2EEBackupResponse>(res);
   },
 };
 
