@@ -57,6 +57,7 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<LoginResponseData>;
   loginWithGoogle: (idToken: string) => Promise<LoginResponseData>;
   logout: () => Promise<void>;
+  updateUser: (updatedUser: Partial<User>) => void;
 }
 
 /** Chế độ hiển thị form */

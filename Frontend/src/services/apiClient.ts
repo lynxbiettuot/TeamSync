@@ -1,8 +1,4 @@
-// src/services/apiClient.ts - HTTP client bảo mật: Access Token trong Memory, auto refresh, dùng Base URL tương đối qua Vite Proxy
-// Tự động đính kèm HttpOnly Refresh Token Cookie thông qua credentials: 'include'
-// Tự động gửi Header Authorization: Bearer <accessToken>
-// Tự động gọi POST /api/auth/refresh khi gặp lỗi 401 và retry request ban đầu
-
+// HTTP client bảo mật: Access Token trong Memory, auto refresh, hỗ trợ JSON và FormData qua Vite Proxy
 export const BASE_API_URL = '';
 
 // ===== IN-MEMORY TOKEN STORE =====
@@ -161,14 +157,24 @@ apiClient.post = <T = unknown>(endpoint: string, body?: unknown, options?: Reque
   apiClient<T>(endpoint, {
     ...options,
     method: 'POST',
-    body: body !== undefined ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+    body:
+      body !== undefined
+        ? typeof body === 'string' || body instanceof FormData
+          ? (body as BodyInit)
+          : JSON.stringify(body)
+        : undefined,
   });
 
 apiClient.put = <T = unknown>(endpoint: string, body?: unknown, options?: RequestOptions) =>
   apiClient<T>(endpoint, {
     ...options,
     method: 'PUT',
-    body: body !== undefined ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+    body:
+      body !== undefined
+        ? typeof body === 'string' || body instanceof FormData
+          ? (body as BodyInit)
+          : JSON.stringify(body)
+        : undefined,
   });
 
 apiClient.delete = <T = unknown>(endpoint: string, options?: RequestOptions) =>

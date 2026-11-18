@@ -103,6 +103,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return data;
   };
 
+  // Cập nhật một phần thông tin User trong Memory State
+  const updateUser = (updatedFields: Partial<User>) => {
+    setUser(prev => (prev ? { ...prev, ...updatedFields } : null));
+  };
+
   const value: AuthContextType = {
     user,
     accessToken,
@@ -111,6 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     loginWithGoogle,
     logout,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
