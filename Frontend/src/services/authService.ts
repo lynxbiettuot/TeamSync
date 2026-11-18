@@ -1,4 +1,4 @@
-// Service xác thực người dùng (Login, Logout, OTP, Refresh Token) với Base URL tương đối
+// Service xác thực người dùng (Login, Google OAuth, Logout, OTP, Refresh Token) với Base URL tương đối
 import { apiClient } from './apiClient';
 import type { AuthApiResponse, LoginResponseData } from '../types/auth.types';
 
@@ -11,6 +11,13 @@ export const authService = {
     return apiClient.post<AuthApiResponse<LoginResponseData>>('/api/auth/login', {
       email,
       password,
+    });
+  },
+
+  // POST /api/auth/google — Đăng nhập / Đăng ký qua Google OAuth2 ID Token
+  async loginWithGoogle(idToken: string): Promise<AuthApiResponse<LoginResponseData>> {
+    return apiClient.post<AuthApiResponse<LoginResponseData>>('/api/auth/google', {
+      idToken,
     });
   },
 
