@@ -132,6 +132,30 @@ export const chatService = {
   },
 
   /**
+   * Tải lên hình ảnh hoặc tệp tin đính kèm trong tin nhắn
+   * POST /api/messages/upload
+   */
+  async uploadAttachment(
+    conversationId: number,
+    file: File,
+    content?: string,
+    replyToMessageId?: number
+  ): Promise<Message> {
+    const formData = new FormData();
+    formData.append('conversationId', String(conversationId));
+    formData.append('file', file);
+    if (content) {
+      formData.append('content', content);
+    }
+    if (replyToMessageId) {
+      formData.append('replyToMessageId', String(replyToMessageId));
+    }
+
+    const res = await apiClient.post<unknown>('/api/messages/upload', formData);
+    return extractData<Message>(res);
+  },
+
+  /**
    * Thu hồi tin nhắn
    * DELETE /api/messages/{messageId}?receiverId={receiverId}
    */

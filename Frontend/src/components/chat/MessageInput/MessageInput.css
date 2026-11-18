@@ -80,6 +80,95 @@
   background: #fee2e2;
 }
 
+.chat-attach-btn {
+  background: transparent;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 18px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.chat-attach-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.chat-attach-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chat-file-preview-banner {
+  padding: 8px 24px;
+  background: #eff6ff;
+  border-bottom: 1px solid #dbeafe;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chat-file-preview-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.chat-file-preview-icon {
+  font-size: 20px;
+}
+
+.chat-file-preview-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.chat-file-preview-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+.chat-file-preview-size {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.chat-file-preview-remove {
+  background: transparent;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.chat-file-preview-remove:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
 .chat-input-form {
   padding: 16px 24px;
   display: flex;

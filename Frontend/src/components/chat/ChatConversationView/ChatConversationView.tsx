@@ -35,6 +35,7 @@ interface ChatConversationViewProps {
   onEditMessage: (messageId: number, newContent: string) => void;
   onDeleteMessage: (messageId: number) => void;
   onSendMessage: (content: string) => void;
+  onSendAttachment?: (file: File, content: string) => Promise<void>;
   onUpdateGroupName?: (conversationId: number, newName: string) => Promise<void>;
   onAddMembers?: (conversationId: number, memberIds: number[]) => Promise<void>;
   onRemoveMember?: (conversationId: number, targetUserId: number) => Promise<void>;
@@ -67,6 +68,7 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
   onEditMessage,
   onDeleteMessage,
   onSendMessage,
+  onSendAttachment,
   onUpdateGroupName,
   onAddMembers,
   onRemoveMember,
@@ -122,6 +124,7 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
       {/* Message Input: Ô soạn thảo và gửi tin nhắn */}
       <MessageInput
         onSendMessage={onSendMessage}
+        onSendAttachment={onSendAttachment}
         disabled={false}
         replyingMessage={replyingMessage}
         onCancelReply={onCancelReply}

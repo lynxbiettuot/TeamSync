@@ -42,6 +42,7 @@ export const ChatPage: React.FC = () => {
     replyingMessage,
     setReplyingMessage,
     handleSendMessage,
+    handleSendAttachment,
     handleReactMessage,
     handleEditMessage,
     handleDeleteMessage,
@@ -144,6 +145,7 @@ export const ChatPage: React.FC = () => {
             onEditMessage={handleEditMessage}
             onDeleteMessage={handleDeleteMessage}
             onSendMessage={handleSendMessage}
+            onSendAttachment={handleSendAttachment}
             onUpdateGroupName={handleUpdateGroupName}
             onAddMembers={handleAddGroupMembers}
             onRemoveMember={handleRemoveGroupMember}

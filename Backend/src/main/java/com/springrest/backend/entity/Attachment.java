@@ -1,3 +1,4 @@
+// Entity lưu trữ thông tin tệp đính kèm và hình ảnh trong tin nhắn trò chuyện
 package com.springrest.backend.entity;
 
 import jakarta.persistence.*;
@@ -20,17 +21,16 @@ public class Attachment {
     @Column(name="name")
     private String name;
 
-    @Column(name="file_url", nullable = true)
+    @Column(name="file_url", length = 1000, nullable = true)
     private String fileUrl;
 
     @Column(name="file_type", nullable = true)
     private String fileType;
 
     @Column(name="file_size", nullable = true)
-    private Float fileSize;
+    private Long fileSize;
 
-    //map to Message
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="attachment_id",foreignKey = @ForeignKey(name = "ATTACHEMENT_MESSAGE_FK"))
+    @JoinColumn(name="message_id", foreignKey = @ForeignKey(name = "ATTACHMENT_MESSAGE_FK"))
     private Message message;
 }

@@ -1,3 +1,4 @@
+// DTO phản hồi chi tiết tin nhắn trò chuyện bao gồm phản ứng, trích dẫn reply và tệp đính kèm
 package com.springrest.backend.dto.chat.response;
 
 import com.springrest.backend.entity.Enum.MessageType;
@@ -23,6 +24,7 @@ public class ChatMessageResponse {
     private Boolean isDeleted;
     private ReplyMessageDTO replyTo;
     private List<MessageReactionResponse> reactions = new ArrayList<>();
+    private List<AttachmentResponseDTO> attachments = new ArrayList<>();
 
     public ChatMessageResponse(Integer id,Integer conversationId, Integer senderId, String content, MessageType messageType,LocalDateTime createdAt) {
         this.id = id;
@@ -35,5 +37,6 @@ public class ChatMessageResponse {
         this.isDeleted = false;
         this.replyTo = null;
         this.reactions = new ArrayList<>();
+        this.attachments = new ArrayList<>();
     }
 }
