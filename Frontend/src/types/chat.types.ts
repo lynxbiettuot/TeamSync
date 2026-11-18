@@ -54,6 +54,15 @@ export interface ReplyMessage {
   sender_name?: string;
 }
 
+/** Thông tin tệp đính kèm hoặc hình ảnh trong tin nhắn */
+export interface Attachment {
+  id: number;
+  name: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize?: number;
+}
+
 /** Đối tượng Tin nhắn */
 export interface Message {
   id: number;
@@ -76,6 +85,7 @@ export interface Message {
   replyTo?: ReplyMessage | null;
   reply_to?: ReplyMessage | null;
   reactions?: MessageReaction[];
+  attachments?: Attachment[];
 }
 
 /** Loại cảm xúc thả vào tin nhắn */

@@ -391,6 +391,30 @@ export function useChatPageLogic() {
     }
   };
 
+  // 9b. Gửi tệp tin hoặc hình ảnh đính kèm qua REST API (POST /api/messages/upload)
+  const handleSendAttachment = async (file: File, content: string) => {
+    if (!activeConversationId) return;
+
+    try {
+      const res = await chatService.uploadAttachment(
+        activeConversationId,
+        file,
+        content,
+        replyingMessage ? replyingMessage.id : undefined
+      );
+
+      setReplyingMessage(null);
+      if (res && res.id) {
+        appendMessage(res);
+      }
+      const isImg = file.type.startsWith('image/');
+      const preview = isImg ? '[Hình ảnh]' : `[Tệp tin] ${file.name}`;
+      updateLastMessage(activeConversationId, content ? `${preview} ${content}` : preview);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Tải tệp đính kèm thất bại');
+    }
+  };
+
   // 10. Gửi reaction qua STOMP (/app/chat.react)
   const handleReactMessage = (messageId: number, reactType: ReactType) => {
     if (!activeConversationId) return;
@@ -622,6 +646,7 @@ export function useChatPageLogic() {
     replyingMessage,
     setReplyingMessage,
     handleSendMessage,
+    handleSendAttachment,
     handleReactMessage,
     handleEditMessage,
     handleDeleteMessage,

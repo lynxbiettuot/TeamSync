@@ -78,6 +78,28 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     }
   };
 
+  const handleDownload = async (e: React.MouseEvent, url: string, fileName: string) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch {
+      const fallbackUrl = url.includes('/upload/')
+        ? url.replace('/upload/', '/upload/fl_attachment/')
+        : url;
+      window.open(fallbackUrl, '_blank');
+    }
+  };
+
   const handleSelectReaction = (reactType: ReactType) => {
     if (onReact) {
       onReact(message.id, reactType);
@@ -181,8 +203,63 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             </div>
           ) : (
             <div>
-              {message.content}
-              {isEdited && <span className="chat-msg-edited">(đã chỉnh sửa)</span>}
+              {message.content && (
+                <div>
+                  {message.content}
+                  {isEdited && <span className="chat-msg-edited">(đã chỉnh sửa)</span>}
+                </div>
+              )}
+
+              {/* Tệp tin và hình ảnh đính kèm */}
+              {message.attachments && message.attachments.length > 0 && !isDeleted && (
+                <div className="chat-msg-attachments">
+                  {message.attachments.map((att) => {
+                    const isImg =
+                      message.messageType === 'IMAGE' ||
+                      (att.fileType && att.fileType.toLowerCase().startsWith('image/')) ||
+                      /\.(jpe?g|png|webp|gif)$/i.test(att.fileUrl);
+
+                    const formatSize = (bytes?: number) => {
+                      if (!bytes) return '';
+                      if (bytes < 1024) return `${bytes} B`;
+                      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+                      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+                    };
+
+                    if (isImg) {
+                      return (
+                        <div key={att.id || att.fileUrl} className="chat-msg-attachment-img-wrap">
+                          <a href={att.fileUrl} target="_blank" rel="noopener noreferrer" title="Bấm để xem ảnh gốc">
+                            <img src={att.fileUrl} alt={att.name || 'Ảnh đính kèm'} className="chat-msg-attachment-img" />
+                          </a>
+                        </div>
+                      );
+                    }
+
+                    const downloadUrl = att.fileUrl.includes('/upload/')
+                      ? att.fileUrl.replace('/upload/', '/upload/fl_attachment/')
+                      : att.fileUrl;
+
+                    return (
+                      <div key={att.id || att.fileUrl} className="chat-msg-attachment-file">
+                        <div className="chat-msg-file-icon">📄</div>
+                        <div className="chat-msg-file-info">
+                          <span className="chat-msg-file-name" title={att.name}>{att.name}</span>
+                          {att.fileSize ? <span className="chat-msg-file-size">{formatSize(att.fileSize)}</span> : null}
+                        </div>
+                        <a
+                          href={downloadUrl}
+                          onClick={(e) => handleDownload(e, att.fileUrl, att.name || 'file')}
+                          className="chat-msg-file-download"
+                          title="Tải tệp xuống"
+                        >
+                          ⬇️
+                        </a>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
