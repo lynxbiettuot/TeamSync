@@ -5,9 +5,10 @@
   flex-direction: column;
   background: #f1f5f9;
   overflow: hidden;
+  min-width: 0;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 600px) {
   .chat-main {
     width: 100% !important;
   }

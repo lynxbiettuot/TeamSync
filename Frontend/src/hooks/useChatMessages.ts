@@ -13,6 +13,49 @@ interface UseChatMessagesProps {
 }
 
 /**
+ * Helper giải mã một tin nhắn và nội dung trích dẫn (replyTo) bằng CryptoKey
+ */
+async function decryptSingleMessage(
+  msg: Message,
+  cryptoKey: CryptoKey,
+  deletedIds: Set<number>
+): Promise<Message> {
+  let decryptedContent = msg.content;
+  if (msg.content && !msg.isDeleted && !msg.is_deleted && msg.content !== 'Tin nhắn đã bị thu hồi') {
+    try {
+      decryptedContent = await e2eeService.decryptMessage(msg.content, cryptoKey);
+    } catch {
+      decryptedContent = msg.content;
+    }
+  }
+
+  let replyData = msg.replyTo || msg.reply_to;
+  if (replyData) {
+    let replyContent = replyData.content;
+    if (replyData.id && deletedIds.has(replyData.id)) {
+      replyContent = 'Tin nhắn đã bị thu hồi';
+    } else if (replyContent && replyContent !== 'Tin nhắn đã bị thu hồi') {
+      try {
+        replyContent = await e2eeService.decryptMessage(replyContent, cryptoKey);
+      } catch {
+        // Giữ nguyên nếu không giải mã được
+      }
+    }
+    replyData = {
+      ...replyData,
+      content: replyContent,
+    };
+  }
+
+  return {
+    ...msg,
+    content: decryptedContent,
+    replyTo: replyData || null,
+    reply_to: replyData || null,
+  };
+}
+
+/**
  * Helper giải mã danh sách tin nhắn bằng E2EE Shared Key (1-1) hoặc K_nhom (Group)
  */
 async function decryptMessageBatch(
@@ -27,6 +70,12 @@ async function decryptMessageBatch(
     return rawMessages;
   }
 
+  const deletedIds = new Set(
+    rawMessages
+      .filter((m) => m.isDeleted || m.is_deleted || m.content === 'Tin nhắn đã bị thu hồi')
+      .map((m) => m.id)
+  );
+
   // 1. Trường hợp Group Chat: giải mã bằng K_nhom
   if (isGroup) {
     try {
@@ -38,14 +87,7 @@ async function decryptMessageBatch(
       if (!groupKey) return rawMessages;
 
       return await Promise.all(
-        rawMessages.map(async (msg) => {
-          try {
-            const decrypted = await e2eeService.decryptMessage(msg.content, groupKey);
-            return { ...msg, content: decrypted };
-          } catch {
-            return msg;
-          }
-        })
+        rawMessages.map((msg) => decryptSingleMessage(msg, groupKey, deletedIds))
       );
     } catch (err) {
       console.warn('[E2EE] Lỗi giải mã batch tin nhắn nhóm:', err);
@@ -77,14 +119,7 @@ async function decryptMessageBatch(
     if (!sharedKey) return rawMessages;
 
     return await Promise.all(
-      rawMessages.map(async (msg) => {
-        try {
-          const decrypted = await e2eeService.decryptMessage(msg.content, sharedKey);
-          return { ...msg, content: decrypted };
-        } catch {
-          return msg;
-        }
-      })
+      rawMessages.map((msg) => decryptSingleMessage(msg, sharedKey, deletedIds))
     );
   } catch (err) {
     console.warn('[E2EE] Lỗi giải mã batch tin nhắn 1-1:', err);
@@ -306,16 +341,38 @@ export function useChatMessages({
     );
   }, [conversationId, isGroup, groupMembers, currentUserId, activeChatUser]);
 
-  // Đánh dấu tin nhắn đã bị thu hồi
+  // Đánh dấu tin nhắn đã bị thu hồi (và cập nhật tất cả trích dẫn reply đến tin nhắn này)
   const handleMessageDeleted = useCallback((messageId: number) => {
     setMessages((prev) =>
       prev.map((msg) => {
-        if (msg.id !== messageId) return msg;
-        return {
-          ...msg,
-          content: 'Tin nhắn đã bị thu hồi',
-          isDeleted: true,
-        };
+        let isModified = false;
+        let updatedMsg = msg;
+
+        if (msg.id === messageId) {
+          updatedMsg = {
+            ...updatedMsg,
+            content: 'Tin nhắn đã bị thu hồi',
+            isDeleted: true,
+            is_deleted: true,
+          };
+          isModified = true;
+        }
+
+        const reply = updatedMsg.replyTo || updatedMsg.reply_to;
+        if (reply && reply.id === messageId) {
+          const updatedReply = {
+            ...reply,
+            content: 'Tin nhắn đã bị thu hồi',
+          };
+          updatedMsg = {
+            ...updatedMsg,
+            replyTo: updatedReply,
+            reply_to: updatedReply,
+          };
+          isModified = true;
+        }
+
+        return isModified ? updatedMsg : msg;
       })
     );
   }, []);

@@ -138,9 +138,62 @@ export function useChatPageLogic() {
         }
       }
 
+      let replyData = newMsg.replyTo || newMsg.reply_to;
+      let decryptedReplyContent = replyData?.content;
+
+      if (replyData && replyData.content && replyData.content !== 'Tin nhắn đã bị thu hồi') {
+        if (isGroupConv && msgConvId && currentUserId) {
+          try {
+            const groupKey = await e2eeService.getOrFetchGroupKey(
+              msgConvId,
+              currentUserId,
+              currentConv?.members
+            );
+            if (groupKey) {
+              decryptedReplyContent = await e2eeService.decryptMessage(replyData.content, groupKey);
+            }
+          } catch (err) {
+            console.warn('[E2EE] Lỗi giải mã reply tin nhắn nhóm nhận:', err);
+          }
+        } else {
+          const partnerUser =
+            currentConv?.otherUser || (activeConversationId === msgConvId ? activeChatUser : null);
+
+          if (currentUserId && partnerUser?.id) {
+            let pubKey = partnerUser.publicKey;
+            if (!pubKey) {
+              pubKey = await e2eeService.fetchLatestPublicKey(partnerUser.id);
+            }
+            if (pubKey) {
+              try {
+                const sharedKey = await e2eeService.getSharedKey(
+                  currentUserId,
+                  partnerUser.id,
+                  pubKey
+                );
+                if (sharedKey) {
+                  decryptedReplyContent = await e2eeService.decryptMessage(replyData.content, sharedKey);
+                }
+              } catch (err) {
+                console.warn('[E2EE] Lỗi giải mã reply tin nhắn nhận:', err);
+              }
+            }
+          }
+        }
+      }
+
+      const updatedReply = replyData
+        ? {
+            ...replyData,
+            content: decryptedReplyContent || replyData.content,
+          }
+        : null;
+
       const displayMsg: Message = {
         ...newMsg,
         content: decryptedContent,
+        replyTo: updatedReply,
+        reply_to: updatedReply,
       };
 
       if (activeConversationId && msgConvId === activeConversationId) {

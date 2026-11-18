@@ -1,3 +1,4 @@
+// Dịch vụ nghiệp vụ tin nhắn: truy xuất lịch sử hội thoại, sửa tin nhắn và thu hồi tin nhắn cho 1-1 và nhóm
 package com.springrest.backend.service.chat;
 
 import com.springrest.backend.dto.chat.request.EditMessageRequest;
@@ -107,18 +108,29 @@ public class MessageService {
         wsEvent.put("conversationId", message.getConversation().getId());
         wsEvent.put("message", response);
 
-        if (request.getReceiverId() != null) {
+        List<Integer> memberIds = findListMembersJoinConversation(message.getConversation().getId());
+        if (memberIds != null && !memberIds.isEmpty()) {
+            for (Integer memberId : memberIds) {
+                messagingTemplate.convertAndSendToUser(
+                        String.valueOf(memberId),
+                        "/queue/messages",
+                        wsEvent
+                );
+            }
+        } else {
+            if (request.getReceiverId() != null) {
+                messagingTemplate.convertAndSendToUser(
+                        String.valueOf(request.getReceiverId()),
+                        "/queue/messages",
+                        wsEvent
+                );
+            }
             messagingTemplate.convertAndSendToUser(
-                    String.valueOf(request.getReceiverId()),
+                    String.valueOf(currentUserId),
                     "/queue/messages",
                     wsEvent
             );
         }
-        messagingTemplate.convertAndSendToUser(
-                String.valueOf(currentUserId),
-                "/queue/messages",
-                wsEvent
-        );
 
         return response;
     }
@@ -141,17 +153,28 @@ public class MessageService {
         wsEvent.put("conversationId", message.getConversation().getId());
         wsEvent.put("messageId", messageId);
 
-        if (receiverId != null) {
+        List<Integer> memberIds = findListMembersJoinConversation(message.getConversation().getId());
+        if (memberIds != null && !memberIds.isEmpty()) {
+            for (Integer memberId : memberIds) {
+                messagingTemplate.convertAndSendToUser(
+                        String.valueOf(memberId),
+                        "/queue/messages",
+                        wsEvent
+                );
+            }
+        } else {
+            if (receiverId != null) {
+                messagingTemplate.convertAndSendToUser(
+                        String.valueOf(receiverId),
+                        "/queue/messages",
+                        wsEvent
+                );
+            }
             messagingTemplate.convertAndSendToUser(
-                    String.valueOf(receiverId),
+                    String.valueOf(currentUserId),
                     "/queue/messages",
                     wsEvent
             );
         }
-        messagingTemplate.convertAndSendToUser(
-                String.valueOf(currentUserId),
-                "/queue/messages",
-                wsEvent
-        );
     }
 }
