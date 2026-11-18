@@ -1,4 +1,4 @@
-// src/main/java/com/springrest/backend/dto/chat/response/GroupMemberResponseDTO.java
+// DTO phản hồi thông tin thành viên nhóm chat kèm khóa công khai E2EE phục vụ chia sẻ K_nhom
 package com.springrest.backend.dto.chat.response;
 
 import com.springrest.backend.entity.Enum.GroupRoleType;
@@ -18,4 +18,14 @@ public class GroupMemberResponseDTO {
     private String avatarUrl;
     private GroupRoleType role;
     private LocalDateTime joinedAt;
+    private String publicKey;
+
+    public GroupMemberResponseDTO(Integer userId, String email, String displayName, String avatarUrl, GroupRoleType role, LocalDateTime joinedAt) {
+        this.userId = userId;
+        this.email = email;
+        this.displayName = displayName;
+        this.avatarUrl = avatarUrl;
+        this.role = role;
+        this.joinedAt = joinedAt;
+    }
 }

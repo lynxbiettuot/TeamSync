@@ -1,3 +1,4 @@
+// Entity người dùng hệ thống bao gồm thông tin tài khoản, khóa công khai E2EE và bản sao lưu PIN
 package com.springrest.backend.entity;
 
 import com.springrest.backend.entity.Enum.UserStatus;
@@ -50,6 +51,12 @@ public class User {
     //filed for e2ee
     @Column(name = "public_key", columnDefinition = "TEXT")
     private String publicKey;
+
+    @Column(name = "encrypted_private_key", columnDefinition = "TEXT")
+    private String encryptedPrivateKey;
+
+    @Column(name = "backup_salt", length = 64)
+    private String backupSalt;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

@@ -1,4 +1,4 @@
-// Hook điều phối toàn bộ logic nghiệp vụ cho ChatPage: quản lý state, E2EE, WebSocket STOMP, WebRTC 1-1 và LiveKit SFU Group Call
+// Hook điều phối toàn bộ logic ChatPage: E2EE 1-1, E2EE nhóm K_nhom, sao lưu PIN, STOMP WebSocket, WebRTC và LiveKit SFU
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { chatService } from '../../services/chatService';
@@ -33,6 +33,13 @@ export function useChatPageLogic() {
     removeConversation,
   } = useConversations(currentUserId);
 
+  const activeConv = conversations.find((c) => c.id === activeConversationId);
+  const isGroup =
+    activeConv?.conversationType === 'GROUP' ||
+    activeConv?.type === 'GROUP' ||
+    activeConv?.conversation_type === 'GROUP';
+  const groupMembers = activeConv?.members;
+
   // 2. Quản lý trạng thái Online / Offline từ Redis qua WebSocket
   const { onlineUserIds, handlePresenceReceived } = useChatPresence();
 
@@ -66,6 +73,8 @@ export function useChatPageLogic() {
     conversationId: activeConversationId,
     currentUserId,
     activeChatUser,
+    isGroup,
+    groupMembers,
   });
 
   // 5. Khởi tạo cặp khóa E2EE trong IndexedDB & luôn đồng bộ lên Server
@@ -84,27 +93,47 @@ export function useChatPageLogic() {
       let decryptedContent = newMsg.content;
 
       const currentConv = conversations.find((c) => c.id === msgConvId);
-      const partnerUser =
-        currentConv?.otherUser || (activeConversationId === msgConvId ? activeChatUser : null);
+      const isGroupConv =
+        currentConv?.conversationType === 'GROUP' ||
+        currentConv?.type === 'GROUP' ||
+        currentConv?.conversation_type === 'GROUP';
 
-      if (currentUserId && partnerUser?.id) {
-        let pubKey = partnerUser.publicKey;
-        if (!pubKey) {
-          pubKey = await e2eeService.fetchLatestPublicKey(partnerUser.id);
+      if (isGroupConv && msgConvId && currentUserId) {
+        try {
+          const groupKey = await e2eeService.getOrFetchGroupKey(
+            msgConvId,
+            currentUserId,
+            currentConv?.members
+          );
+          if (groupKey) {
+            decryptedContent = await e2eeService.decryptMessage(newMsg.content, groupKey);
+          }
+        } catch (err) {
+          console.warn('[E2EE] Lỗi giải mã tin nhắn nhóm nhận:', err);
         }
+      } else {
+        const partnerUser =
+          currentConv?.otherUser || (activeConversationId === msgConvId ? activeChatUser : null);
 
-        if (pubKey) {
-          try {
-            const sharedKey = await e2eeService.getSharedKey(
-              currentUserId,
-              partnerUser.id,
-              pubKey
-            );
-            if (sharedKey) {
-              decryptedContent = await e2eeService.decryptMessage(newMsg.content, sharedKey);
+        if (currentUserId && partnerUser?.id) {
+          let pubKey = partnerUser.publicKey;
+          if (!pubKey) {
+            pubKey = await e2eeService.fetchLatestPublicKey(partnerUser.id);
+          }
+
+          if (pubKey) {
+            try {
+              const sharedKey = await e2eeService.getSharedKey(
+                currentUserId,
+                partnerUser.id,
+                pubKey
+              );
+              if (sharedKey) {
+                decryptedContent = await e2eeService.decryptMessage(newMsg.content, sharedKey);
+              }
+            } catch (err) {
+              console.warn('[E2EE] Lỗi giải mã tin nhắn nhận:', err);
             }
-          } catch (err) {
-            console.warn('[E2EE] Lỗi giải mã tin nhắn nhận:', err);
           }
         }
       }
@@ -190,6 +219,11 @@ export function useChatPageLogic() {
     onCallSignalReceived: (signal) => {
       handleCallSignalRef.current(signal);
     },
+    onGroupKeyDistributed: async (event) => {
+      if (currentUserId) {
+        await e2eeService.handleReceivedGroupKey(event, currentUserId);
+      }
+    },
   });
 
   // 8. Quản lý trạng thái và kết nối cuộc gọi WebRTC 1-1
@@ -222,6 +256,44 @@ export function useChatPageLogic() {
     if (!activeConversationId || !currentUserId) return;
 
     const currentConv = conversations.find((c) => c.id === activeConversationId);
+    const isGroupConv =
+      currentConv?.conversationType === 'GROUP' ||
+      currentConv?.type === 'GROUP' ||
+      currentConv?.conversation_type === 'GROUP';
+
+    let messageContentToSend = content;
+
+    if (isGroupConv) {
+      try {
+        const groupKey = await e2eeService.getOrFetchGroupKey(
+          activeConversationId,
+          currentUserId,
+          currentConv?.members
+        );
+        if (groupKey) {
+          messageContentToSend = await e2eeService.encryptMessage(content, groupKey);
+        }
+      } catch (err) {
+        console.error('[E2EE] Lỗi mã hóa tin nhắn nhóm, gửi dạng thường:', err);
+      }
+
+      const payload: SendMessagePayload = {
+        conversation_id: activeConversationId,
+        receiver_id: null,
+        content: messageContentToSend,
+        message_type: 'TEXT',
+        reply_to_message_id: replyingMessage ? replyingMessage.id : null,
+        replyToMessageId: replyingMessage ? replyingMessage.id : null,
+      };
+
+      const sent = sendMessage(payload);
+      if (sent) {
+        setReplyingMessage(null);
+        updateLastMessage(activeConversationId, content);
+      }
+      return;
+    }
+
     const receiverId = activeChatUser?.id || currentConv?.otherUser?.id;
     let receiverPublicKey = activeChatUser?.publicKey || currentConv?.otherUser?.publicKey;
 
@@ -234,7 +306,6 @@ export function useChatPageLogic() {
       receiverPublicKey = await e2eeService.fetchLatestPublicKey(receiverId);
     }
 
-    let messageContentToSend = content;
     if (receiverPublicKey) {
       try {
         const sharedKey = await e2eeService.getSharedKey(
@@ -272,12 +343,11 @@ export function useChatPageLogic() {
     if (!activeConversationId) return;
 
     const currentConv = conversations.find((c) => c.id === activeConversationId);
-    const receiverId = activeChatUser?.id || currentConv?.otherUser?.id;
-
-    if (!receiverId) {
-      console.warn('Không xác định được receiver_id để thả reaction');
-      return;
-    }
+    const isGroupConv =
+      currentConv?.conversationType === 'GROUP' ||
+      currentConv?.type === 'GROUP' ||
+      currentConv?.conversation_type === 'GROUP';
+    const receiverId = isGroupConv ? null : (activeChatUser?.id || currentConv?.otherUser?.id || null);
 
     sendReaction({
       conversationId: activeConversationId,
@@ -292,10 +362,27 @@ export function useChatPageLogic() {
     if (!activeConversationId) return;
 
     const currentConv = conversations.find((c) => c.id === activeConversationId);
-    const receiverId = activeChatUser?.id || currentConv?.otherUser?.id;
+    const isGroupConv =
+      currentConv?.conversationType === 'GROUP' ||
+      currentConv?.type === 'GROUP' ||
+      currentConv?.conversation_type === 'GROUP';
+    const receiverId = isGroupConv ? undefined : (activeChatUser?.id || currentConv?.otherUser?.id);
 
     let contentToSend = newContent;
-    if (currentUserId && receiverId) {
+    if (isGroupConv && currentUserId) {
+      try {
+        const groupKey = await e2eeService.getOrFetchGroupKey(
+          activeConversationId,
+          currentUserId,
+          currentConv?.members
+        );
+        if (groupKey) {
+          contentToSend = await e2eeService.encryptMessage(newContent, groupKey);
+        }
+      } catch (err) {
+        console.error('[E2EE] Lỗi mã hóa tin nhắn nhóm sửa:', err);
+      }
+    } else if (currentUserId && receiverId) {
       try {
         let receiverPublicKey = activeChatUser?.publicKey || currentConv?.otherUser?.publicKey;
         if (!receiverPublicKey) {
@@ -330,7 +417,11 @@ export function useChatPageLogic() {
     if (!activeConversationId) return;
 
     const currentConv = conversations.find((c) => c.id === activeConversationId);
-    const receiverId = activeChatUser?.id || currentConv?.otherUser?.id;
+    const isGroupConv =
+      currentConv?.conversationType === 'GROUP' ||
+      currentConv?.type === 'GROUP' ||
+      currentConv?.conversation_type === 'GROUP';
+    const receiverId = isGroupConv ? undefined : (activeChatUser?.id || currentConv?.otherUser?.id);
 
     try {
       await chatService.deleteMessage(messageId, receiverId);
@@ -360,6 +451,9 @@ export function useChatPageLogic() {
       const newGroup = await chatService.createGroup({ name, memberIds });
       addConversation(newGroup);
       selectConversation(newGroup.id);
+      if (currentUserId && newGroup.members) {
+        await e2eeService.getOrFetchGroupKey(newGroup.id, currentUserId, newGroup.members);
+      }
     } catch (err) {
       console.error('Lỗi khi tạo nhóm:', err);
       throw err;
@@ -380,6 +474,10 @@ export function useChatPageLogic() {
     try {
       const updated = await chatService.addGroupMembers(conversationId, memberIds);
       updateConversation(updated);
+      if (currentUserId && updated.members) {
+        const newMembers = updated.members.filter((m) => memberIds.includes(m.userId));
+        await e2eeService.distributeKeyToNewMembers(conversationId, currentUserId, newMembers);
+      }
     } catch (err) {
       console.error('Lỗi khi thêm thành viên:', err);
       throw err;
@@ -407,6 +505,16 @@ export function useChatPageLogic() {
     }
   };
 
+  const handleBackupPin = useCallback(async (pin: string): Promise<boolean> => {
+    if (!currentUserId) return false;
+    return await e2eeService.backupPrivateKeyWithPin(currentUserId, pin);
+  }, [currentUserId]);
+
+  const handleRestorePin = useCallback(async (pin: string): Promise<boolean> => {
+    if (!currentUserId) return false;
+    return await e2eeService.restorePrivateKeyWithPin(currentUserId, pin);
+  }, [currentUserId]);
+
   const handleStartGroupCall = useCallback(() => {
     if (activeConversationId) {
       joinGroupCall(activeConversationId);
@@ -430,7 +538,6 @@ export function useChatPageLogic() {
     }
   }, [groupCallConversationId, activeConversationId, endGroupCall]);
 
-  const activeConv = conversations.find((c) => c.id === activeConversationId);
   const otherChatUserId = activeChatUser?.id || activeConv?.otherUser?.id;
   const isChatUserOnline = otherChatUserId !== undefined && onlineUserIds.has(otherChatUserId);
 
@@ -471,6 +578,8 @@ export function useChatPageLogic() {
     handleAddGroupMembers,
     handleRemoveGroupMember,
     handleLeaveGroup,
+    handleBackupPin,
+    handleRestorePin,
     callState,
     callSession,
     localStream,

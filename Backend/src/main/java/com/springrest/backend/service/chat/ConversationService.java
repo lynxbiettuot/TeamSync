@@ -1,4 +1,4 @@
-// src/main/java/com/springrest/backend/service/chat/ConversationService.java
+// Service xử lý nghiệp vụ hội thoại chat 1-1, nhóm, danh sách thành viên và phân phối khóa E2EE
 package com.springrest.backend.service.chat;
 
 import com.springrest.backend.dto.authentication.response.UserResponseDTO;
@@ -475,7 +475,8 @@ public class ConversationService {
                     u.getDisplayName(),
                     u.getAvatarUrl(),
                     role,
-                    p.getJoinedAt()
+                    p.getJoinedAt(),
+                    u.getPublicKey()
             ));
         }
 

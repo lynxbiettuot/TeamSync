@@ -1,6 +1,5 @@
-// src/pages/chat/ChatPage.tsx
-// Trang chính ChatPage: kết hợp Navbar, Sidebar, ConversationView, CallOverlays (1-1) và GroupCallModal (LiveKit SFU)
-import React from 'react';
+// Trang chính ChatPage: kết hợp Navbar, Sidebar, ConversationView, E2EE PIN Modal, CallOverlays và GroupCallModal
+import React, { useState } from 'react';
 import { useChatPageLogic } from './useChatPageLogic';
 import { ChatNavbar } from '../../components/chat/ChatNavbar/ChatNavbar';
 import { ChatSidebar } from '../../components/chat/ChatSidebar/ChatSidebar';
@@ -9,9 +8,12 @@ import { ChatEmptyState } from '../../components/chat/ChatEmptyState/ChatEmptySt
 import { NotificationToast } from '../../components/chat/Notification/NotificationToast';
 import { CallOverlays } from '../../components/chat/VideoCall/CallOverlays';
 import { GroupCallModal } from '../../components/chat/GroupCall/GroupCallModal';
+import { E2EEPinModal } from '../../components/chat/E2EEPinModal/E2EEPinModal';
 import './ChatPage.css';
 
 export const ChatPage: React.FC = () => {
+  const [isE2EEModalOpen, setIsE2EEModalOpen] = useState(false);
+
   const {
     user,
     logout,
@@ -49,6 +51,8 @@ export const ChatPage: React.FC = () => {
     handleAddGroupMembers,
     handleRemoveGroupMember,
     handleLeaveGroup,
+    handleBackupPin,
+    handleRestorePin,
     callState,
     callSession,
     localStream,
@@ -93,6 +97,7 @@ export const ChatPage: React.FC = () => {
         onNotificationClick={handleNotificationClick}
         onMarkAllAsRead={handleMarkAllAsRead}
         onLogout={logout}
+        onOpenE2EEModal={() => setIsE2EEModalOpen(true)}
       />
 
       {/* 2. Không gian làm việc Chat */}
@@ -189,6 +194,14 @@ export const ChatPage: React.FC = () => {
         onToggleScreenShare={toggleGroupCallScreenShare}
         onLeaveCall={leaveGroupCall}
         onEndCallForEveryone={handleEndGroupCallForEveryone}
+      />
+
+      {/* 6. Modal cài đặt và sao lưu / khôi phục mã PIN E2EE */}
+      <E2EEPinModal
+        isOpen={isE2EEModalOpen}
+        onClose={() => setIsE2EEModalOpen(false)}
+        onBackupPin={handleBackupPin}
+        onRestorePin={handleRestorePin}
       />
     </div>
   );
