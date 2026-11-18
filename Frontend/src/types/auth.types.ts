@@ -1,3 +1,4 @@
+// Định nghĩa các interface và type cho xác thực: form đăng nhập, đăng ký, quên mật khẩu và Google OAuth2
 /** Dữ liệu form đăng nhập */
 export interface LoginFormValues {
   email: string;
@@ -54,6 +55,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<LoginResponseData>;
+  loginWithGoogle: (idToken: string) => Promise<LoginResponseData>;
   logout: () => Promise<void>;
 }
 

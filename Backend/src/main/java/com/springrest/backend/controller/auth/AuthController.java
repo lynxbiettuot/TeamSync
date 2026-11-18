@@ -1,9 +1,11 @@
+// Controller REST API xử lý các luồng xác thực: đăng ký OTP, đăng nhập thường, Google OAuth2, làm mới token và đăng xuất
 package com.springrest.backend.controller.auth;
 
 import com.springrest.backend.dto.authentication.request.*;
 import com.springrest.backend.dto.authentication.response.LoginResult;
 import com.springrest.backend.dto.authentication.response.UserResponseDTO;
 import com.springrest.backend.service.auth.AuthService;
+import com.springrest.backend.service.auth.GoogleAuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -18,6 +20,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
+    private final GoogleAuthService googleAuthService;
 
     @PostMapping("register/send-otp")
     public ResponseEntity<?> sendRegisterOtp(@RequestBody SendOtpRequest request) {
@@ -78,6 +81,44 @@ public class AuthController {
             errorResponse.put("message", e.getMessage() != null ? e.getMessage() : "Đăng nhập thất bại");
             errorResponse.put("data", null);
 
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @PostMapping("google")
+    public ResponseEntity<?> loginWithGoogle(@RequestBody GoogleLoginRequest request) {
+        try {
+            LoginResult result = googleAuthService.authenticateGoogleUser(request.getIdToken());
+
+            ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", result.getRefreshToken())
+                    .httpOnly(true)
+                    .secure(false)
+                    .path("/")
+                    .maxAge(7 * 24 * 60 * 60)
+                    .sameSite("Strict")
+                    .build();
+
+            Map<String, Object> data = Map.of(
+                    "accessToken", result.getAccessToken(),
+                    "tokenType", "Bearer",
+                    "expiresIn", result.getExpiresIn(),
+                    "user", result.getUser()
+            );
+
+            Map<String, Object> responseBody = Map.of(
+                    "success", true,
+                    "message", "Google login successful",
+                    "data", data
+            );
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
+                    .body(responseBody);
+        } catch (RuntimeException e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", e.getMessage() != null ? e.getMessage() : "Đăng nhập Google thất bại");
+            errorResponse.put("data", null);
             return ResponseEntity.badRequest().body(errorResponse);
         }
     }

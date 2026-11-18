@@ -1,9 +1,11 @@
+// Component LoginForm xử lý đăng nhập bằng email/mật khẩu và Google OAuth2
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import type { LoginFormValues } from '../../types/auth.types';
 import { useAuth } from '../../contexts/AuthContext';
 import { isValidEmail } from '../../utils/validation';
-import { EyeIcon, EyeOffIcon, GoogleIcon, FacebookIcon, SpinnerIcon, AlertCircleIcon } from '../icons';
+import { EyeIcon, EyeOffIcon, FacebookIcon, SpinnerIcon, AlertCircleIcon } from '../icons';
 
 interface LoginFormProps {
   onRegister?: () => void;
@@ -13,7 +15,7 @@ interface LoginFormProps {
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onRegister, onForgotPassword, onLoginSuccess }) => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const [form, setForm] = useState<LoginFormValues>({ email: '', password: '' });
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormValues, string>>>({});
   const [showPw, setShowPw] = useState(false);
@@ -59,6 +61,31 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onRegister, onForgotPasswo
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) {
+      setApiError('Không nhận được mã xác thực từ Google');
+      return;
+    }
+    setLoading(true);
+    setApiError('');
+    try {
+      const data = await loginWithGoogle(credentialResponse.credential);
+      if (onLoginSuccess) {
+        onLoginSuccess(data);
+      } else {
+        navigate('/chat', { replace: true });
+      }
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : 'Đăng nhập Google thất bại');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setApiError('Đăng nhập Google thất bại. Vui lòng thử lại.');
+  };
+
   return (
     <>
       {/* Header */}
@@ -67,11 +94,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onRegister, onForgotPasswo
         <p className="auth-subtitle">Đăng nhập để tiếp tục đến không gian làm việc của bạn.</p>
       </div>
 
-      {/* Social login — chỉ icon, chưa có chức năng */}
+      {/* Social login */}
       <div className="auth-social-row">
-        <button type="button" className="auth-social-btn" aria-label="Google">
-          <GoogleIcon size={22} />
-        </button>
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={handleGoogleError}
+          type="icon"
+          shape="circle"
+          size="large"
+        />
         <button type="button" className="auth-social-btn" aria-label="Facebook">
           <FacebookIcon size={22} />
         </button>

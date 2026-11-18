@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx
+// Context quản lý trạng thái xác thực người dùng (Memory Access Token, User info, Login/Logout, Google OAuth2)
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { User, AuthContextType, LoginResponseData } from '../types/auth.types';
 import { authService } from '../services/authService';
@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Hàm đăng nhập
+  // Hàm đăng nhập thông thường bằng email/password
   const login = async (email: string, password: string): Promise<LoginResponseData> => {
     const res = await authService.login(email, password);
     const data = res.data;
@@ -86,12 +86,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return data;
   };
 
+  // Hàm đăng nhập bằng Google OAuth2 ID Token
+  const loginWithGoogle = async (idToken: string): Promise<LoginResponseData> => {
+    const res = await authService.loginWithGoogle(idToken);
+    const data = res.data;
+
+    if (!data?.accessToken || !data?.user) {
+      throw new Error('Dữ liệu phản hồi đăng nhập Google không hợp lệ');
+    }
+
+    // Lưu Access Token và User vào Memory
+    tokenStorage.set(data.accessToken);
+    setAccessToken(data.accessToken);
+    setUser(data.user);
+
+    return data;
+  };
+
   const value: AuthContextType = {
     user,
     accessToken,
     isAuthenticated: Boolean(accessToken && user),
     isLoading,
     login,
+    loginWithGoogle,
     logout,
   };
 
