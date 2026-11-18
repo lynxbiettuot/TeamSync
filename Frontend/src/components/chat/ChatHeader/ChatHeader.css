@@ -192,7 +192,7 @@
   transform: translateY(-1px);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 600px) {
   .chat-header {
     padding: 0 12px;
   }

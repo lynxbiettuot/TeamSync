@@ -125,6 +125,11 @@
   max-width: 240px;
 }
 
+.chat-msg-reply-text--deleted {
+  font-style: italic;
+  opacity: 0.8;
+}
+
 .chat-msg-row--me .chat-msg-reply-text {
   color: #f1f5f9;
 }

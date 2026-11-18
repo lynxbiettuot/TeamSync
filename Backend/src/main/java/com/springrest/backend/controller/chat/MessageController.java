@@ -1,3 +1,4 @@
+// Controller REST API quản lý tin nhắn hội thoại: lấy lịch sử tin nhắn, chỉnh sửa và thu hồi tin nhắn
 package com.springrest.backend.controller.chat;
 
 import com.springrest.backend.dto.chat.request.EditMessageRequest;
@@ -20,7 +21,7 @@ public class MessageController {
 
     @GetMapping("/{conversationId}")
     public ResponseEntity<?> getMessagesByConversationId(@PathVariable Integer conversationId) {
-        if(conversationId == null) {// request with conversation id empty
+        if(conversationId == null) {
             throw new IllegalArgumentException("conversationId is required");
         }
 
@@ -38,7 +39,7 @@ public class MessageController {
             throw new IllegalArgumentException("Conversation not found");
         }
 
-        if(listUser.size() != 2 || !listUser.contains(currentUserId)) {
+        if(!listUser.contains(currentUserId)) {
             throw new IllegalArgumentException("You are not allowed in this conversation");
         }
 

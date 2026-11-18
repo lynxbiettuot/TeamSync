@@ -138,7 +138,13 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                 <span>↩</span>
                 <span>{replyData.senderName || replyData.sender_name || 'Người dùng'}</span>
               </div>
-              <div className="chat-msg-reply-text">{replyData.content}</div>
+              <div
+                className={`chat-msg-reply-text ${
+                  replyData.content === 'Tin nhắn đã bị thu hồi' ? 'chat-msg-reply-text--deleted' : ''
+                }`}
+              >
+                {replyData.content}
+              </div>
             </div>
           )}
 
